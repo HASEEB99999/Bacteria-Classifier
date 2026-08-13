@@ -4,8 +4,6 @@ from PIL import Image
 import onnxruntime as ort
 import json
 import plotly.graph_objects as go
-import pandas as pd
-from datetime import datetime
 
 st.set_page_config(
     page_title="🧫 Bacteria Colony Classifier",
@@ -164,7 +162,8 @@ def main():
         
         with col1:
             image = Image.open(uploaded_file)
-            st.image(image, caption="📸 Uploaded Image", use_column_width=True)
+            # FIX: Changed use_column_width to use_container_width
+            st.image(image, caption="📸 Uploaded Image", use_container_width=True)
         
         with col2:
             if st.button("🔬 Classify Bacteria", use_container_width=True):
@@ -191,11 +190,6 @@ def main():
                         <p class="{conf_color}" style="font-size:1.5rem; font-weight:600;">
                             {confidence:.1f}% Confidence ({conf_text})
                         </p>
-                        <div style="margin-top:0.5rem;">
-                            <span class="badge {'badge-success' if confidence > 70 else 'badge-warning' if confidence > 50 else 'badge-danger'}">
-                                {'✅ Reliable' if confidence > 70 else '⚠️ Needs Review' if confidence > 50 else '❌ Low Confidence'}
-                            </span>
-                        </div>
                     </div>
                     """, unsafe_allow_html=True)
                     
@@ -221,7 +215,6 @@ def main():
                                 st.markdown(f"""
                                 - **Virulence**: {info['virulence']}
                                 - **Key Identification**: {info['key_id']}
-                                - **Common Infections**: {info.get('common_infections', 'Varies')}
                                 """)
                             
                             with tab3:
@@ -258,8 +251,18 @@ def main():
 
 if __name__ == "__main__":
     main()
+      
+   
     
-  
+   
+        
+       
+                     
+                       
+                              
+                         
+                          
+                      
           
 
      
