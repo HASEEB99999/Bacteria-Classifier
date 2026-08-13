@@ -1,5 +1,5 @@
 
-   import streamlit as st
+  import streamlit as st
 import numpy as np
 from PIL import Image
 import onnxruntime as ort
@@ -18,412 +18,388 @@ st.set_page_config(
 
 # ============ CUSTOM CSS ============
 st.markdown("""
-    <style>
-    /* Google Font */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-    
-    * {
-        font-family: 'Inter', sans-serif;
-    }
-    
-    /* Vibrant Animated Background */
-    .stApp {
-        background: linear-gradient(135deg, #ff6b6b 0%, #ffd93d 25%, #6bcb77 50%, #4d96ff 75%, #9b59b6 100%);
-        background-size: 500% 500%;
-        animation: vibrantGradient 12s ease infinite;
-    }
-    
-    @keyframes vibrantGradient {
-        0% { background-position: 0% 50%; }
-        25% { background-position: 50% 50%; }
-        50% { background-position: 100% 50%; }
-        75% { background-position: 50% 100%; }
-        100% { background-position: 0% 50%; }
-    }
-    
-    /* Bold Black Text Base */
-    .stMarkdown, .stText, p, li, label {
-        color: #000000 !important;
-        font-weight: 700 !important;
-    }
-    
-    /* Glassmorphism Cards with Rainbow Border */
-    .glass-card {
-        background: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border-radius: 24px;
-        border: 3px solid transparent;
-        background-clip: padding-box;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-        padding: 2rem;
-        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        animation: rainbowBorder 4s linear infinite;
-    }
-    
-    @keyframes rainbowBorder {
-        0% { border-color: #ff6b6b; box-shadow: 0 8px 32px rgba(255, 107, 107, 0.3); }
-        20% { border-color: #ffd93d; box-shadow: 0 8px 32px rgba(255, 217, 61, 0.3); }
-        40% { border-color: #6bcb77; box-shadow: 0 8px 32px rgba(107, 203, 119, 0.3); }
-        60% { border-color: #4d96ff; box-shadow: 0 8px 32px rgba(77, 150, 255, 0.3); }
-        80% { border-color: #9b59b6; box-shadow: 0 8px 32px rgba(155, 89, 182, 0.3); }
-        100% { border-color: #ff6b6b; box-shadow: 0 8px 32px rgba(255, 107, 107, 0.3); }
-    }
-    
-    .glass-card:hover {
-        transform: translateY(-8px) scale(1.01);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-    }
-    
-    /* Main Title - Bold Black with Rainbow Accent */
-    .main-title {
-        text-align: center;
-        font-size: 4.2rem;
-        font-weight: 900;
-        color: #000000 !important;
-        text-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
-        padding: 1rem 0;
-        letter-spacing: -0.02em;
-    }
-    
-    .main-title .rainbow-text {
-        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
-        background-size: 300% 300%;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        animation: rainbowText 4s ease infinite;
-    }
-    
-    @keyframes rainbowText {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
-    
-    /* Subtitle - Bold Black */
-    .sub-title {
-        text-align: center;
-        color: #000000 !important;
-        font-size: 1.3rem;
-        font-weight: 700 !important;
-        margin-bottom: 2rem;
-        text-shadow: 0 2px 10px rgba(255, 255, 255, 0.3);
-    }
-    
-    /* Upload Area - Bold Text */
-    .upload-area {
-        border: 3px dashed rgba(0, 0, 0, 0.3);
-        border-radius: 24px;
-        padding: 3rem 2rem;
-        text-align: center;
-        background: rgba(255, 255, 255, 0.75);
-        backdrop-filter: blur(10px);
-        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        cursor: pointer;
-    }
-    
-    .upload-area:hover {
-        transform: scale(1.03);
-        background: rgba(255, 255, 255, 0.9);
-        border-color: #000000;
-    }
-    
-    .upload-area h3 {
-        color: #000000 !important;
-        font-weight: 800 !important;
-    }
-    
-    .upload-area p {
-        color: #000000 !important;
-        font-weight: 600 !important;
-        opacity: 0.8;
-    }
-    
-    .upload-icon {
-        font-size: 5rem;
-        margin-bottom: 1rem;
-        display: block;
-        animation: bounce 2s ease-in-out infinite;
-    }
-    
-    @keyframes bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-15px); }
-    }
-    
-    /* Prediction Box - Bold Black Text */
-    .prediction-box {
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(20px);
-        border-radius: 24px;
-        padding: 2.5rem;
-        text-align: center;
-        border: 3px solid #000000;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-        animation: fadeInUp 0.6s ease;
-    }
-    
-    @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(30px) scale(0.95); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    
-    .prediction-box h2 {
-        font-size: 3rem;
-        font-weight: 900 !important;
-        color: #000000 !important;
-        margin: 0.5rem 0;
-        text-shadow: 0 2px 10px rgba(255, 255, 255, 0.3);
-    }
-    
-    .prediction-box p {
-        color: #000000 !important;
-        font-weight: 700 !important;
-    }
-    
-    /* Confidence Colors with Bold Text */
-    .confidence-high { 
-        color: #00b894 !important;
-        font-weight: 900 !important;
-        font-size: 2.2rem;
-        -webkit-text-fill-color: #00b894 !important;
-    }
-    
-    .confidence-medium { 
-        color: #f39c12 !important;
-        font-weight: 900 !important;
-        font-size: 2.2rem;
-        -webkit-text-fill-color: #f39c12 !important;
-    }
-    
-    .confidence-low { 
-        color: #e17055 !important;
-        font-weight: 900 !important;
-        font-size: 2.2rem;
-        -webkit-text-fill-color: #e17055 !important;
-    }
-    
-    /* Bold Badges */
-    .badge {
-        display: inline-block;
-        padding: 0.5rem 1.5rem;
-        border-radius: 50px;
-        font-weight: 800 !important;
-        font-size: 0.95rem;
-        margin: 0.25rem;
-        color: #000000 !important;
-        transition: all 0.3s ease;
-        border: 2px solid #000000;
-    }
-    
-    .badge-success {
-        background: linear-gradient(135deg, #00b894, #00cec9);
-        color: #000000 !important;
-        box-shadow: 0 4px 20px rgba(0, 206, 201, 0.3);
-    }
-    
-    .badge-warning {
-        background: linear-gradient(135deg, #fdcb6e, #f39c12);
-        color: #000000 !important;
-        box-shadow: 0 4px 20px rgba(253, 203, 110, 0.3);
-    }
-    
-    .badge-danger {
-        background: linear-gradient(135deg, #e17055, #d63031);
-        color: #000000 !important;
-        box-shadow: 0 4px 20px rgba(225, 112, 85, 0.3);
-    }
-    
-    .badge-info {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: #000000 !important;
-        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
-    }
-    
-    .badge-rainbow {
-        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
-        background-size: 300% 300%;
-        animation: rainbowText 3s ease infinite;
-        color: #000000 !important;
-        font-weight: 800 !important;
-        border-color: #000000;
-    }
-    
-    /* Vibrant Button - Bold Text */
-    .stButton > button {
-        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6) !important;
-        background-size: 300% 300% !important;
-        animation: rainbowText 3s ease infinite !important;
-        color: #000000 !important;
-        font-weight: 900 !important;
-        font-size: 1.3rem !important;
-        padding: 1rem 2.5rem !important;
-        border: 3px solid #000000 !important;
-        border-radius: 50px !important;
-        transition: all 0.3s ease !important;
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2) !important;
-        width: 100% !important;
-        letter-spacing: 0.5px !important;
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-5px) scale(1.02) !important;
-        box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3) !important;
-    }
-    
-    .stButton > button:active {
-        transform: translateY(0px) !important;
-    }
-    
-    /* Progress Bar - Vibrant */
-    .stProgress > div > div {
-        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6) !important;
-        background-size: 300% 300% !important;
-        animation: rainbowText 3s ease infinite !important;
-        border-radius: 50px !important;
-        height: 14px !important;
-        border: 2px solid #000000 !important;
-    }
-    
-    /* Sidebar - Bold Black Text */
-    .css-1d391kg, .css-1d391kg {
-        background: rgba(255, 255, 255, 0.85) !important;
-        backdrop-filter: blur(20px) !important;
-        border-right: 3px solid #000000 !important;
-    }
-    
-    .css-1d391kg p, .css-1d391kg h3 {
-        color: #000000 !important;
-        font-weight: 700 !important;
-    }
-    
-    /* Info Cards - Bold Text */
-    .info-card {
-        background: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(10px);
-        border-radius: 16px;
-        padding: 1.5rem;
-        border: 2px solid #000000;
-        margin: 0.5rem 0;
-        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    
-    .info-card:hover {
-        transform: translateX(8px) scale(1.01);
-        background: rgba(255, 255, 255, 0.95);
-    }
-    
-    .info-card h4 {
-        color: #000000 !important;
-        font-weight: 800 !important;
-        margin-bottom: 0.5rem;
-    }
-    
-    .info-card p {
-        color: #000000 !important;
-        font-weight: 600 !important;
-        margin: 0.25rem 0;
-    }
-    
-    .info-card strong {
-        color: #000000 !important;
-        font-weight: 900 !important;
-    }
-    
-    /* Metrics - Bold Black */
-    .metric-value {
-        font-size: 3.2rem;
-        font-weight: 900 !important;
-        color: #000000 !important;
-    }
-    
-    .metric-label {
-        color: #000000 !important;
-        font-size: 1rem;
-        font-weight: 700 !important;
-    }
-    
-    /* Sidebar Text Override */
-    .css-1d391kg .stMarkdown p,
-    .css-1d391kg .stMarkdown li {
-        color: #000000 !important;
-        font-weight: 700 !important;
-    }
-    
-    /* Tabs - Bold Black */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background: rgba(255, 255, 255, 0.7);
-        border-radius: 16px;
-        padding: 0.5rem;
-        border: 2px solid #000000;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 12px;
-        padding: 0.5rem 1.5rem;
-        font-weight: 700 !important;
-        color: #000000 !important;
-        transition: all 0.3s ease;
-    }
-    
-    .stTabs [data-baseweb="tab"]:hover {
-        background: rgba(0, 0, 0, 0.1);
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background: rgba(0, 0, 0, 0.15) !important;
-        backdrop-filter: blur(10px);
-        color: #000000 !important;
-        font-weight: 800 !important;
-    }
-    
-    /* Footer - Bold Black */
-    .footer {
-        text-align: center;
-        padding: 2rem 0;
-        color: #000000 !important;
-        font-size: 1rem;
-        font-weight: 700 !important;
-        margin-top: 2rem;
-        text-shadow: 0 2px 10px rgba(255, 255, 255, 0.3);
-    }
-    
-    /* File Uploader Text */
-    .stFileUploader label {
-        color: #000000 !important;
-        font-weight: 700 !important;
-    }
-    
-    /* Expander Text */
-    .streamlit-expanderHeader {
-        color: #000000 !important;
-        font-weight: 800 !important;
-        font-size: 1.1rem !important;
-    }
-    
-    /* Loading Spinner Text */
-    .stSpinner > div {
-        color: #000000 !important;
-        font-weight: 700 !important;
-    }
-    
-    /* Success/Warning/Error Messages */
-    .stAlert {
-        color: #000000 !important;
-        font-weight: 700 !important;
-    }
-    
-    .stAlert p {
-        color: #000000 !important;
-        font-weight: 700 !important;
-    }
-    </style>
+<style>
+/* Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+* {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Vibrant Animated Background */
+.stApp {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ffd93d 25%, #6bcb77 50%, #4d96ff 75%, #9b59b6 100%);
+    background-size: 500% 500%;
+    animation: vibrantGradient 12s ease infinite;
+}
+
+@keyframes vibrantGradient {
+    0% { background-position: 0% 50%; }
+    25% { background-position: 50% 50%; }
+    50% { background-position: 100% 50%; }
+    75% { background-position: 50% 100%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Bold Black Text Base */
+.stMarkdown, .stText, p, li, label {
+    color: #000000 !important;
+    font-weight: 700 !important;
+}
+
+/* Glassmorphism Cards with Rainbow Border */
+.glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 24px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    padding: 2rem;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    animation: rainbowBorder 4s linear infinite;
+}
+
+@keyframes rainbowBorder {
+    0% { border-color: #ff6b6b; box-shadow: 0 8px 32px rgba(255, 107, 107, 0.3); }
+    20% { border-color: #ffd93d; box-shadow: 0 8px 32px rgba(255, 217, 61, 0.3); }
+    40% { border-color: #6bcb77; box-shadow: 0 8px 32px rgba(107, 203, 119, 0.3); }
+    60% { border-color: #4d96ff; box-shadow: 0 8px 32px rgba(77, 150, 255, 0.3); }
+    80% { border-color: #9b59b6; box-shadow: 0 8px 32px rgba(155, 89, 182, 0.3); }
+    100% { border-color: #ff6b6b; box-shadow: 0 8px 32px rgba(255, 107, 107, 0.3); }
+}
+
+.glass-card:hover {
+    transform: translateY(-8px) scale(1.01);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+/* Main Title - Bold Black with Rainbow Accent */
+.main-title {
+    text-align: center;
+    font-size: 4.2rem;
+    font-weight: 900;
+    color: #000000 !important;
+    text-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
+    padding: 1rem 0;
+    letter-spacing: -0.02em;
+}
+
+.main-title .rainbow-text {
+    background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: rainbowText 4s ease infinite;
+}
+
+@keyframes rainbowText {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Subtitle - Bold Black */
+.sub-title {
+    text-align: center;
+    color: #000000 !important;
+    font-size: 1.3rem;
+    font-weight: 700 !important;
+    margin-bottom: 2rem;
+    text-shadow: 0 2px 10px rgba(255, 255, 255, 0.3);
+}
+
+/* Upload Area - Bold Text */
+.upload-area {
+    border: 3px dashed rgba(0, 0, 0, 0.3);
+    border-radius: 24px;
+    padding: 3rem 2rem;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(10px);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    transform: scale(1.03);
+    background: rgba(255, 255, 255, 0.9);
+    border-color: #000000;
+}
+
+.upload-area h3 {
+    color: #000000 !important;
+    font-weight: 800 !important;
+}
+
+.upload-area p {
+    color: #000000 !important;
+    font-weight: 600 !important;
+    opacity: 0.8;
+}
+
+.upload-icon {
+    font-size: 5rem;
+    margin-bottom: 1rem;
+    display: block;
+    animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+}
+
+/* Prediction Box - Bold Black Text */
+.prediction-box {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    padding: 2.5rem;
+    text-align: center;
+    border: 3px solid #000000;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    animation: fadeInUp 0.6s ease;
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.prediction-box h2 {
+    font-size: 3rem;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    margin: 0.5rem 0;
+    text-shadow: 0 2px 10px rgba(255, 255, 255, 0.3);
+}
+
+.prediction-box p {
+    color: #000000 !important;
+    font-weight: 700 !important;
+}
+
+/* Confidence Colors with Bold Text */
+.confidence-high { 
+    color: #00b894 !important;
+    font-weight: 900 !important;
+    font-size: 2.2rem;
+    -webkit-text-fill-color: #00b894 !important;
+}
+
+.confidence-medium { 
+    color: #f39c12 !important;
+    font-weight: 900 !important;
+    font-size: 2.2rem;
+    -webkit-text-fill-color: #f39c12 !important;
+}
+
+.confidence-low { 
+    color: #e17055 !important;
+    font-weight: 900 !important;
+    font-size: 2.2rem;
+    -webkit-text-fill-color: #e17055 !important;
+}
+
+/* Bold Badges */
+.badge {
+    display: inline-block;
+    padding: 0.5rem 1.5rem;
+    border-radius: 50px;
+    font-weight: 800 !important;
+    font-size: 0.95rem;
+    margin: 0.25rem;
+    color: #000000 !important;
+    transition: all 0.3s ease;
+    border: 2px solid #000000;
+}
+
+.badge-success {
+    background: linear-gradient(135deg, #00b894, #00cec9);
+    color: #000000 !important;
+    box-shadow: 0 4px 20px rgba(0, 206, 201, 0.3);
+}
+
+.badge-warning {
+    background: linear-gradient(135deg, #fdcb6e, #f39c12);
+    color: #000000 !important;
+    box-shadow: 0 4px 20px rgba(253, 203, 110, 0.3);
+}
+
+.badge-danger {
+    background: linear-gradient(135deg, #e17055, #d63031);
+    color: #000000 !important;
+    box-shadow: 0 4px 20px rgba(225, 112, 85, 0.3);
+}
+
+.badge-info {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #000000 !important;
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+}
+
+.badge-rainbow {
+    background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
+    background-size: 300% 300%;
+    animation: rainbowText 3s ease infinite;
+    color: #000000 !important;
+    font-weight: 800 !important;
+    border-color: #000000;
+}
+
+/* Vibrant Button - Bold Text */
+.stButton > button {
+    background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6) !important;
+    background-size: 300% 300% !important;
+    animation: rainbowText 3s ease infinite !important;
+    color: #000000 !important;
+    font-weight: 900 !important;
+    font-size: 1.3rem !important;
+    padding: 1rem 2.5rem !important;
+    border: 3px solid #000000 !important;
+    border-radius: 50px !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2) !important;
+    width: 100% !important;
+    letter-spacing: 0.5px !important;
+}
+
+.stButton > button:hover {
+    transform: translateY(-5px) scale(1.02) !important;
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3) !important;
+}
+
+.stButton > button:active {
+    transform: translateY(0px) !important;
+}
+
+/* Progress Bar - Vibrant */
+.stProgress > div > div {
+    background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6) !important;
+    background-size: 300% 300% !important;
+    animation: rainbowText 3s ease infinite !important;
+    border-radius: 50px !important;
+    height: 14px !important;
+    border: 2px solid #000000 !important;
+}
+
+/* Sidebar - Bold Black Text */
+.css-1d391kg, .css-1d391kg {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(20px) !important;
+    border-right: 3px solid #000000 !important;
+}
+
+.css-1d391kg p, .css-1d391kg h3 {
+    color: #000000 !important;
+    font-weight: 700 !important;
+}
+
+/* Info Cards - Bold Text */
+.info-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 1.5rem;
+    border: 2px solid #000000;
+    margin: 0.5rem 0;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.info-card:hover {
+    transform: translateX(8px) scale(1.01);
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.info-card h4 {
+    color: #000000 !important;
+    font-weight: 800 !important;
+    margin-bottom: 0.5rem;
+}
+
+.info-card p {
+    color: #000000 !important;
+    font-weight: 600 !important;
+    margin: 0.25rem 0;
+}
+
+.info-card strong {
+    color: #000000 !important;
+    font-weight: 900 !important;
+}
+
+/* Metrics - Bold Black */
+.metric-value {
+    font-size: 3.2rem;
+    font-weight: 900 !important;
+    color: #000000 !important;
+}
+
+.metric-label {
+    color: #000000 !important;
+    font-size: 1rem;
+    font-weight: 700 !important;
+}
+
+/* Tabs - Bold Black */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 16px;
+    padding: 0.5rem;
+    border: 2px solid #000000;
+}
+
+.stTabs [data-baseweb="tab"] {
+    border-radius: 12px;
+    padding: 0.5rem 1.5rem;
+    font-weight: 700 !important;
+    color: #000000 !important;
+    transition: all 0.3s ease;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.stTabs [aria-selected="true"] {
+    background: rgba(0, 0, 0, 0.15) !important;
+    backdrop-filter: blur(10px);
+    color: #000000 !important;
+    font-weight: 800 !important;
+}
+
+/* Footer - Bold Black */
+.footer {
+    text-align: center;
+    padding: 2rem 0;
+    color: #000000 !important;
+    font-size: 1rem;
+    font-weight: 700 !important;
+    margin-top: 2rem;
+    text-shadow: 0 2px 10px rgba(255, 255, 255, 0.3);
+}
+
+/* File Uploader Text */
+.stFileUploader label {
+    color: #000000 !important;
+    font-weight: 700 !important;
+}
+
+/* Expander Text */
+.streamlit-expanderHeader {
+    color: #000000 !important;
+    font-weight: 800 !important;
+    font-size: 1.1rem !important;
+}
+</style>
 """, unsafe_allow_html=True)
 
-# ============ FLOATING PARTICLES (Subtle) ============
+# ============ FLOATING PARTICLES ============
 def add_particles():
     colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#9b59b6', '#fd79a8']
     particles = ""
