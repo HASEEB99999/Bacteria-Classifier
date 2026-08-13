@@ -398,43 +398,50 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ============ FLOATING PARTICLES ============
+# ============ FLOATING PARTICLES (Fixed) ============
 def add_particles():
     colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#9b59b6', '#fd79a8']
-    particles = ""
-    for i in range(12):
-        size = random.randint(4, 12)
+    particles_html = """
+    <style>
+    .particle {
+        position: fixed;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 0;
+        animation: floatUp linear infinite;
+        opacity: 0.15;
+    }
+    
+    @keyframes floatUp {
+        0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+        10% { opacity: 0.15; }
+        90% { opacity: 0.15; }
+        100% { transform: translateY(-10vh) rotate(720deg); opacity: 0; }
+    }
+    </style>
+    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden;">
+    """
+    
+    for i in range(15):
+        size = random.randint(5, 15)
         left = random.randint(0, 100)
         duration = random.randint(15, 25)
         delay = random.randint(0, 15)
         color = random.choice(colors)
-        particles += f"""
+        particles_html += f"""
         <div class="particle" style="
-            position: fixed;
-            border-radius: 50%;
-            pointer-events: none;
             width: {size}px;
             height: {size}px;
             left: {left}%;
             background: {color};
-            animation: floatUp {duration}s ease-in-out infinite;
+            animation-duration: {duration}s;
             animation-delay: {delay}s;
             box-shadow: 0 0 15px {color};
-            opacity: 0.15;
-            z-index: 0;
         "></div>
         """
-    st.markdown(f"""
-    <style>
-    @keyframes floatUp {{
-        0% {{ transform: translateY(100vh) rotate(0deg); opacity: 0; }}
-        10% {{ opacity: 0.15; }}
-        90% {{ opacity: 0.15; }}
-        100% {{ transform: translateY(-10vh) rotate(720deg); opacity: 0; }}
-    }}
-    </style>
-    <div>{particles}</div>
-    """, unsafe_allow_html=True)
+    
+    particles_html += "</div>"
+    st.markdown(particles_html, unsafe_allow_html=True)
 
 add_particles()
 
@@ -553,16 +560,16 @@ def main():
             <p class="sub-title">🔬 Upload an image to identify bacteria species with AI-powered precision</p>
         </div>
     """, unsafe_allow_html=True)
-    
+
     session, class_names = load_onnx_model()
-    
+
     if session is None:
         st.error("⚠️ Please make sure 'bacteria_classifier.onnx' and 'class_names.json' are in the same directory.")
         return
-    
+
     # Layout
     col1, col2, col3 = st.columns([1, 2, 1])
-    
+
     with col2:
         # Upload Section
         st.markdown("""
@@ -572,21 +579,21 @@ def main():
             <p>or click to browse files (JPG, PNG, TIFF)</p>
         </div>
         """, unsafe_allow_html=True)
-        
+
         uploaded_file = st.file_uploader(
             " ",
             type=['jpg', 'jpeg', 'png', 'tiff', 'bmp'],
             label_visibility="collapsed"
         )
-        
+
         if uploaded_file is not None:
             image = Image.open(uploaded_file)
-            
+
             # Display image
             st.markdown('<div class="glass-card">', unsafe_allow_html=True)
             st.image(image, caption="📸 Uploaded Image", use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
-            
+
             # Classify Button
             if st.button("🔬 Classify Bacteria 🧫", use_container_width=True):
                 with st.spinner("🔍 Analyzing colony morphology..."):
@@ -594,7 +601,7 @@ def main():
                     predicted, confidence, all_predictions = predict_image(
                         image, session, class_names
                     )
-                    
+
                     # Determine confidence level
                     if confidence > 70:
                         conf_level = "High"
@@ -611,17 +618,17 @@ def main():
                         conf_emoji = "❌"
                         conf_color = "confidence-low"
                         badge = "badge-danger"
-                    
+
                     # Store in history
                     st.session_state.prediction_history.append({
                         'predicted': predicted,
                         'confidence': confidence,
                         'timestamp': time.time()
                     })
-                    
+
                     # Prediction Box
                     info = get_bacteria_info(predicted)
-                    
+
                     st.markdown(f"""
                     <div class="prediction-box">
                         <div style="font-size: 3.5rem; margin-bottom: -0.5rem;">{info.get('emoji', '🧬')}</div>
@@ -641,15 +648,15 @@ def main():
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-                    
+
                     # Confidence Bar
                     st.progress(int(confidence))
-                    
+
                     # Morphology Info
                     if info:
                         with st.expander("📊 Morphology & Clinical Characteristics", expanded=True):
                             tab1, tab2, tab3 = st.tabs(["🔬 Morphology", "🦠 Clinical", "💊 Treatment"])
-                            
+
                             with tab1:
                                 st.markdown(f"""
                                 <div class="info-card">
@@ -660,7 +667,7 @@ def main():
                                     <p><strong>Colony Size:</strong> {info['size']}</p>
                                 </div>
                                 """, unsafe_allow_html=True)
-                            
+
                             with tab2:
                                 st.markdown(f"""
                                 <div class="info-card">
@@ -669,7 +676,7 @@ def main():
                                     <p><strong>Key Identification:</strong> {info['key_id']}</p>
                                 </div>
                                 """, unsafe_allow_html=True)
-                            
+
                             with tab3:
                                 st.markdown(f"""
                                 <div class="info-card">
@@ -677,15 +684,15 @@ def main():
                                     <p>{info['treatment']}</p>
                                 </div>
                                 """, unsafe_allow_html=True)
-                    
+
                     # Confidence Chart
                     st.markdown("### 📈 Confidence Scores")
-                    
+
                     sorted_preds = dict(sorted(all_predictions.items(), key=lambda x: x[1], reverse=True))
-                    
+
                     rainbow_colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#9b59b6', '#fd79a8']
                     colors = [rainbow_colors[i % len(rainbow_colors)] for i in range(len(sorted_preds))]
-                    
+
                     fig = go.Figure(data=[
                         go.Bar(
                             x=list(sorted_preds.keys()),
@@ -697,7 +704,7 @@ def main():
                             hovertemplate='<b>%{x}</b><br>Confidence: %{y:.1f}%<extra></extra>'
                         )
                     ])
-                    
+
                     fig.update_layout(
                         xaxis_title="Bacteria Species",
                         yaxis_title="Confidence (%)",
@@ -711,15 +718,15 @@ def main():
                         hovermode='closest',
                         font=dict(color='#000000', weight='bold')
                     )
-                    
+
                     fig.update_traces(
                         marker_line_color='#000000',
                         marker_line_width=2,
                         opacity=0.9
                     )
-                    
+
                     st.plotly_chart(fig, use_container_width=True)
-    
+
     # Sidebar
     with st.sidebar:
         st.markdown("""
@@ -729,9 +736,9 @@ def main():
             <p style="color: #000000 !important; font-weight: 700 !important; font-size: 0.9rem;">Powered by ONNX Runtime</p>
         </div>
         """, unsafe_allow_html=True)
-        
+
         st.divider()
-        
+
         # Model Performance
         st.markdown("""
         <div style="text-align: center;">
@@ -743,9 +750,9 @@ def main():
             </div>
         </div>
         """, unsafe_allow_html=True)
-        
+
         st.divider()
-        
+
         # Available Species
         st.markdown("### 🦠 Available Species")
         for species in class_names:
@@ -759,9 +766,9 @@ def main():
                 <span style="font-size: 0.9rem; font-weight: 700 !important;">{display_name}</span>
             </div>
             """, unsafe_allow_html=True)
-        
+
         st.divider()
-        
+
         # History
         if st.session_state.prediction_history:
             st.markdown("### 📜 Recent Predictions")
@@ -776,7 +783,7 @@ def main():
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-        
+
         # Instructions
         st.divider()
         st.markdown("""
@@ -787,7 +794,7 @@ def main():
             <p>🌈 Enjoy the colors!</p>
         </div>
         """, unsafe_allow_html=True)
-    
+
     # Footer
     st.markdown("""
     <div class="footer">
