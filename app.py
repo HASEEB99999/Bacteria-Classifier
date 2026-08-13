@@ -4,9 +4,8 @@ from PIL import Image
 import onnxruntime as ort
 import json
 import plotly.graph_objects as go
-import base64
-from io import BytesIO
 import time
+import random
 
 # ============ PAGE CONFIG ============
 st.set_page_config(
@@ -20,199 +19,283 @@ st.set_page_config(
 st.markdown("""
     <style>
     /* Google Font */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
     
     * {
         font-family: 'Inter', sans-serif;
     }
     
-    /* Animated Background */
+    /* Rainbow Animated Background */
     .stApp {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        animation: gradientShift 15s ease infinite;
-        background-size: 400% 400%;
+        background: linear-gradient(135deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
+        background-size: 500% 500%;
+        animation: rainbowGradient 15s ease infinite;
     }
     
-    @keyframes gradientShift {
+    @keyframes rainbowGradient {
         0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
+        20% { background-position: 50% 50%; }
+        40% { background-position: 100% 50%; }
+        60% { background-position: 50% 100%; }
+        80% { background-position: 0% 100%; }
         100% { background-position: 0% 50%; }
     }
     
-    /* Glassmorphism Cards */
+    /* Rainbow Floating Particles */
+    .particle {
+        position: fixed;
+        border-radius: 50%;
+        pointer-events: none;
+        opacity: 0.6;
+        animation: floatUp 10s infinite linear;
+    }
+    
+    @keyframes floatUp {
+        0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+        10% { opacity: 0.6; }
+        90% { opacity: 0.6; }
+        100% { transform: translateY(-10vh) rotate(720deg); opacity: 0; }
+    }
+    
+    /* Glassmorphism Cards with Rainbow Border */
     .glass-card {
         background: rgba(255, 255, 255, 0.15);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         border-radius: 24px;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        padding: 2rem;
+        border: 2px solid transparent;
+        background-clip: padding-box;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
+        padding: 2rem;
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        animation: rainbowBorder 4s linear infinite;
+    }
+    
+    @keyframes rainbowBorder {
+        0% { border-color: #ff6b6b; box-shadow: 0 8px 32px rgba(255, 107, 107, 0.3); }
+        16% { border-color: #ffd93d; box-shadow: 0 8px 32px rgba(255, 217, 61, 0.3); }
+        33% { border-color: #6bcb77; box-shadow: 0 8px 32px rgba(107, 203, 119, 0.3); }
+        50% { border-color: #4d96ff; box-shadow: 0 8px 32px rgba(77, 150, 255, 0.3); }
+        66% { border-color: #9b59b6; box-shadow: 0 8px 32px rgba(155, 89, 182, 0.3); }
+        83% { border-color: #ff6b6b; box-shadow: 0 8px 32px rgba(255, 107, 107, 0.3); }
+        100% { border-color: #ff6b6b; box-shadow: 0 8px 32px rgba(255, 107, 107, 0.3); }
     }
     
     .glass-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+        transform: translateY(-10px) scale(1.02);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
     }
     
-    /* Main Title */
+    /* Main Title with Rainbow Text */
     .main-title {
         text-align: center;
-        font-size: 4rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+        font-size: 4.5rem;
+        font-weight: 900;
+        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6, #ff6b6b);
+        background-size: 300% 300%;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
+        animation: rainbowText 4s ease infinite;
         padding: 1rem 0;
-        animation: fadeInDown 0.8s ease;
+        text-shadow: none;
     }
     
-    @keyframes fadeInDown {
-        from { opacity: 0; transform: translateY(-30px); }
-        to { opacity: 1; transform: translateY(0); }
+    @keyframes rainbowText {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
     }
     
+    /* Subtitle Glow */
     .sub-title {
         text-align: center;
-        color: rgba(255, 255, 255, 0.9);
-        font-size: 1.2rem;
+        color: white;
+        font-size: 1.3rem;
         font-weight: 300;
         margin-bottom: 2rem;
-        text-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        text-shadow: 0 0 20px rgba(255,255,255,0.3), 0 0 60px rgba(255,255,255,0.1);
+        animation: glowPulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes glowPulse {
+        0%, 100% { text-shadow: 0 0 20px rgba(255,255,255,0.3); }
+        50% { text-shadow: 0 0 40px rgba(255,255,255,0.6), 0 0 80px rgba(255,255,255,0.2); }
     }
     
     /* Upload Area */
     .upload-area {
-        border: 3px dashed rgba(102, 126, 234, 0.4);
+        border: 3px dashed rgba(255, 255, 255, 0.4);
         border-radius: 24px;
         padding: 3rem 2rem;
         text-align: center;
         background: rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(10px);
-        transition: all 0.3s ease;
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
+        animation: rainbowBorder 4s linear infinite;
     }
     
     .upload-area:hover {
-        border-color: #667eea;
+        transform: scale(1.05);
         background: rgba(255, 255, 255, 0.2);
-        transform: scale(1.02);
     }
     
     .upload-icon {
-        font-size: 4rem;
+        font-size: 5rem;
         margin-bottom: 1rem;
         display: block;
+        animation: bounce 2s ease-in-out infinite;
+    }
+    
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-20px); }
     }
     
     /* Prediction Box */
     .prediction-box {
-        background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.6));
+        background: rgba(255, 255, 255, 0.15);
         backdrop-filter: blur(20px);
         border-radius: 24px;
         padding: 2.5rem;
         text-align: center;
-        border: 1px solid rgba(255,255,255,0.3);
+        border: 2px solid rgba(255,255,255,0.3);
         box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-        animation: fadeInUp 0.6s ease;
+        animation: fadeInUp 0.6s ease, rainbowBorder 3s linear infinite;
     }
     
     @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(30px); }
-        to { opacity: 1; transform: translateY(0); }
+        from { opacity: 0; transform: translateY(30px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
     }
     
     .prediction-box h2 {
         font-size: 3rem;
-        font-weight: 700;
+        font-weight: 800;
         margin: 0.5rem 0;
-        background: linear-gradient(135deg, #2d3436, #636e72);
+        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
+        background-size: 300% 300%;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
+        animation: rainbowText 3s ease infinite;
     }
     
+    /* Confidence Colors with Rainbow */
     .confidence-high { 
-        color: #00b894 !important;
-        -webkit-text-fill-color: #00b894 !important;
-        font-weight: 700;
-    }
-    .confidence-medium { 
-        color: #fdcb6e !important;
-        -webkit-text-fill-color: #fdcb6e !important;
-        font-weight: 700;
-    }
-    .confidence-low { 
-        color: #e17055 !important;
-        -webkit-text-fill-color: #e17055 !important;
-        font-weight: 700;
+        background: linear-gradient(90deg, #00b894, #00cec9);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 800;
+        font-size: 2.2rem;
     }
     
-    /* Badge Styles */
+    .confidence-medium { 
+        background: linear-gradient(90deg, #fdcb6e, #f39c12);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 800;
+        font-size: 2.2rem;
+    }
+    
+    .confidence-low { 
+        background: linear-gradient(90deg, #e17055, #d63031);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 800;
+        font-size: 2.2rem;
+    }
+    
+    /* Rainbow Badges */
     .badge {
         display: inline-block;
-        padding: 0.4rem 1.2rem;
+        padding: 0.4rem 1.5rem;
         border-radius: 50px;
         font-weight: 600;
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         margin: 0.25rem;
-        transition: all 0.3s ease;
+        transition: all 0.5s ease;
+        animation: rainbowBorder 3s linear infinite;
     }
     
     .badge-success {
         background: linear-gradient(135deg, #00b894, #00cec9);
         color: white;
-        box-shadow: 0 4px 15px rgba(0, 206, 201, 0.3);
+        box-shadow: 0 4px 20px rgba(0, 206, 201, 0.4);
     }
     
     .badge-warning {
         background: linear-gradient(135deg, #fdcb6e, #f39c12);
         color: white;
-        box-shadow: 0 4px 15px rgba(253, 203, 110, 0.3);
+        box-shadow: 0 4px 20px rgba(253, 203, 110, 0.4);
     }
     
     .badge-danger {
         background: linear-gradient(135deg, #e17055, #d63031);
         color: white;
-        box-shadow: 0 4px 15px rgba(225, 112, 85, 0.3);
+        box-shadow: 0 4px 20px rgba(225, 112, 85, 0.4);
     }
     
     .badge-info {
         background: linear-gradient(135deg, #667eea, #764ba2);
         color: white;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
     }
     
-    /* Button Styles */
+    .badge-rainbow {
+        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
+        background-size: 300% 300%;
+        animation: rainbowText 3s ease infinite;
+        color: white;
+        font-weight: 700;
+    }
+    
+    /* Rainbow Button */
     .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6, #ff6b6b) !important;
+        background-size: 300% 300% !important;
+        animation: rainbowText 3s ease infinite !important;
         color: white !important;
-        font-weight: 600 !important;
-        font-size: 1.2rem !important;
-        padding: 0.8rem 2rem !important;
+        font-weight: 700 !important;
+        font-size: 1.3rem !important;
+        padding: 1rem 2.5rem !important;
         border: none !important;
         border-radius: 50px !important;
         transition: all 0.3s ease !important;
-        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4) !important;
+        box-shadow: 0 4px 30px rgba(255, 255, 255, 0.3) !important;
         width: 100% !important;
+        letter-spacing: 0.5px !important;
     }
     
     .stButton > button:hover {
-        transform: translateY(-3px) !important;
-        box-shadow: 0 8px 30px rgba(102, 126, 234, 0.6) !important;
+        transform: translateY(-5px) scale(1.02) !important;
+        box-shadow: 0 10px 50px rgba(255, 255, 255, 0.5) !important;
     }
     
     .stButton > button:active {
         transform: translateY(0px) !important;
     }
     
-    /* Sidebar */
+    /* Progress Bar Rainbow */
+    .stProgress > div > div {
+        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6) !important;
+        background-size: 300% 300% !important;
+        animation: rainbowText 3s ease infinite !important;
+        border-radius: 50px !important;
+        height: 12px !important;
+    }
+    
+    /* Sidebar Rainbow */
     .css-1d391kg, .css-1d391kg {
-        background: rgba(255, 255, 255, 0.1) !important;
+        background: rgba(255, 255, 255, 0.15) !important;
         backdrop-filter: blur(20px) !important;
-        border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-right: 2px solid rgba(255, 255, 255, 0.2) !important;
+        animation: rainbowBorder 4s linear infinite !important;
     }
     
     /* Info Cards */
@@ -223,91 +306,89 @@ st.markdown("""
         padding: 1.5rem;
         border: 1px solid rgba(255, 255, 255, 0.2);
         margin: 0.5rem 0;
-        transition: all 0.3s ease;
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: rainbowBorder 4s linear infinite;
     }
     
     .info-card:hover {
+        transform: translateX(10px) scale(1.02);
         background: rgba(255, 255, 255, 0.25);
-        transform: translateX(5px);
     }
     
-    .info-card h4 {
-        color: #2d3436;
-        margin-bottom: 0.5rem;
-        font-weight: 600;
-    }
-    
-    .info-card p {
-        color: rgba(45, 52, 54, 0.8);
-        margin: 0.25rem 0;
-    }
-    
-    /* Metrics */
+    /* Metrics Rainbow */
     .metric-value {
-        font-size: 2.5rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, #667eea, #764ba2);
+        font-size: 3rem;
+        font-weight: 900;
+        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
+        background-size: 300% 300%;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-    }
-    
-    .metric-label {
-        color: rgba(45, 52, 54, 0.7);
-        font-size: 0.9rem;
-        font-weight: 500;
-    }
-    
-    /* Progress Bar */
-    .stProgress > div > div {
-        background: linear-gradient(90deg, #667eea, #764ba2) !important;
-        border-radius: 50px !important;
+        animation: rainbowText 3s ease infinite;
     }
     
     /* Footer */
     .footer {
         text-align: center;
         padding: 2rem 0;
-        color: rgba(255, 255, 255, 0.7);
+        color: white;
         font-size: 0.9rem;
         margin-top: 2rem;
-    }
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 16px;
-        padding: 0.5rem;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 12px;
-        padding: 0.5rem 1.5rem;
-        font-weight: 500;
-        transition: all 0.3s ease;
-    }
-    
-    .stTabs [data-baseweb="tab"]:hover {
-        background: rgba(255, 255, 255, 0.2);
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background: rgba(255, 255, 255, 0.3) !important;
-        backdrop-filter: blur(10px);
+        text-shadow: 0 2px 10px rgba(0,0,0,0.2);
     }
     
     /* Loading Animation */
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
+    @keyframes shimmer {
+        0% { background-position: -1000px 0; }
+        100% { background-position: 1000px 0; }
     }
     
     .loading-text {
-        animation: pulse 1.5s ease-in-out infinite;
+        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
+        background-size: 300% 300%;
+        animation: rainbowText 1.5s ease infinite;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 700;
+    }
+    
+    /* Sparkle animation for results */
+    @keyframes sparkle {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.8; transform: scale(1.1); }
+    }
+    
+    .sparkle {
+        animation: sparkle 1s ease-in-out infinite;
     }
     </style>
 """, unsafe_allow_html=True)
+
+# ============ RAINBOW PARTICLES ============
+def add_particles():
+    colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#9b59b6', '#fd79a8', '#fdcb6e']
+    particles = ""
+    for i in range(20):
+        size = random.randint(8, 25)
+        left = random.randint(0, 100)
+        duration = random.randint(8, 15)
+        delay = random.randint(0, 10)
+        color = random.choice(colors)
+        particles += f"""
+        <div class="particle" style="
+            width: {size}px;
+            height: {size}px;
+            left: {left}%;
+            background: {color};
+            animation-duration: {duration}s;
+            animation-delay: {delay}s;
+            box-shadow: 0 0 20px {color};
+        "></div>
+        """
+    st.markdown(f'<div>{particles}</div>', unsafe_allow_html=True)
+
+add_particles()
 
 # ============ SESSION STATE ============
 if 'prediction_history' not in st.session_state:
@@ -414,12 +495,12 @@ def get_bacteria_info(bacteria_name):
 
 # ============ MAIN APP ============
 def main():
-    # Header
+    # Header with Rainbow
     st.markdown("""
         <div style="text-align: center; padding: 1rem 0;">
-            <div style="font-size: 5rem; margin-bottom: -1rem;">🧫</div>
-            <h1 class="main-title">Bacteria Colony Classifier</h1>
-            <p class="sub-title">Upload an image of a bacterial colony to identify the species</p>
+            <div style="font-size: 6rem; margin-bottom: -1.5rem; animation: bounce 2s ease-in-out infinite;">🧫</div>
+            <h1 class="main-title">✨ Bacteria Colony Classifier ✨</h1>
+            <p class="sub-title">🌟 Upload an image of a bacterial colony to identify the species 🌟</p>
         </div>
     """, unsafe_allow_html=True)
     
@@ -433,7 +514,15 @@ def main():
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        # Upload Section
+        # Upload Section with Rainbow Border
+        st.markdown("""
+        <div class="upload-area">
+            <span class="upload-icon">📸</span>
+            <h3 style="color: white; font-weight: 600;">Drop your image here</h3>
+            <p style="color: rgba(255,255,255,0.8);">or click to browse</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
         uploaded_file = st.file_uploader(
             " ",
             type=['jpg', 'jpeg', 'png', 'tiff', 'bmp'],
@@ -448,10 +537,10 @@ def main():
             st.image(image, caption="📸 Uploaded Image", use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
             
-            # Classify button
-            if st.button("🔬 Classify Bacteria", use_container_width=True):
+            # Rainbow Classify Button
+            if st.button("🌈 Classify Bacteria", use_container_width=True):
                 with st.spinner("🔍 Analyzing colony morphology..."):
-                    time.sleep(0.5)  # Smooth animation
+                    time.sleep(0.8)
                     predicted, confidence, all_predictions = predict_image(
                         image, session, class_names
                     )
@@ -459,17 +548,17 @@ def main():
                     # Determine confidence level
                     if confidence > 70:
                         conf_level = "High"
-                        conf_emoji = "✅"
+                        conf_emoji = "✨"
                         conf_color = "confidence-high"
                         badge = "badge-success"
                     elif confidence > 50:
                         conf_level = "Medium"
-                        conf_emoji = "⚠️"
+                        conf_emoji = "🌟"
                         conf_color = "confidence-medium"
                         badge = "badge-warning"
                     else:
                         conf_level = "Low"
-                        conf_emoji = "❌"
+                        conf_emoji = "💫"
                         conf_color = "confidence-low"
                         badge = "badge-danger"
                     
@@ -485,24 +574,25 @@ def main():
                     
                     st.markdown(f"""
                     <div class="prediction-box">
-                        <div style="font-size: 3rem; margin-bottom: -0.5rem;">{info.get('emoji', '🧬')}</div>
-                        <p style="color: rgba(45,52,54,0.6); margin: 0;">Predicted Species</p>
+                        <div style="font-size: 4rem; margin-bottom: -0.5rem;">{info.get('emoji', '🧬')}</div>
+                        <p style="color: rgba(255,255,255,0.8); margin: 0; font-weight: 300;">🎯 Predicted Species</p>
                         <h2>{predicted.replace('_', ' ')}</h2>
-                        <div class="{conf_color}" style="font-size: 2rem; font-weight: 700; margin: 0.5rem 0;">
+                        <div class="{conf_color}" style="font-size: 2.5rem; font-weight: 800; margin: 0.5rem 0;">
                             {confidence:.1f}%
                         </div>
                         <div>
                             <span class="badge {badge}">{conf_emoji} {conf_level} Confidence</span>
+                            <span class="badge badge-rainbow">🌈 AI Verified</span>
                         </div>
                         <div style="margin-top: 1rem;">
-                            <p style="margin: 0; color: rgba(45,52,54,0.7); font-size: 0.9rem;">
-                                {info.get('description', '')}
+                            <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 0.95rem; font-weight: 300;">
+                                ✨ {info.get('description', '')}
                             </p>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Confidence Bar
+                    # Rainbow Progress Bar
                     st.progress(int(confidence))
                     
                     # Morphology Info
@@ -538,12 +628,13 @@ def main():
                                 </div>
                                 """, unsafe_allow_html=True)
                     
-                    # Confidence Chart
+                    # Confidence Chart with Rainbow Colors
                     st.markdown("### 📈 Confidence Scores")
                     
                     sorted_preds = dict(sorted(all_predictions.items(), key=lambda x: x[1], reverse=True))
                     
-                    colors = ['#00b894' if x == predicted else '#dfe6e9' for x in sorted_preds.keys()]
+                    rainbow_colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#9b59b6', '#fd79a8']
+                    colors = [rainbow_colors[i % len(rainbow_colors)] for i in range(len(sorted_preds))]
                     
                     fig = go.Figure(data=[
                         go.Bar(
@@ -570,20 +661,25 @@ def main():
                     )
                     
                     fig.update_traces(
-                        marker_line_color='rgba(0,0,0,0.1)',
-                        marker_line_width=1,
+                        marker_line_color='rgba(255,255,255,0.3)',
+                        marker_line_width=2,
                         opacity=0.9
                     )
                     
                     st.plotly_chart(fig, use_container_width=True)
     
-    # Sidebar Content
+    # Rainbow Sidebar
     with st.sidebar:
         st.markdown("""
         <div style="text-align: center; padding: 1rem 0;">
-            <div style="font-size: 3rem;">🧫</div>
-            <h3 style="font-weight: 700; margin: 0;">Bacteria AI</h3>
-            <p style="color: rgba(45,52,54,0.6); font-size: 0.9rem;">Powered by ONNX Runtime</p>
+            <div style="font-size: 4rem; animation: bounce 2s ease-in-out infinite;">🧫</div>
+            <h3 style="font-weight: 800; background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: rainbowText 3s ease infinite;">Bacteria AI</h3>
+            <p style="color: rgba(255,255,255,0.8); font-size: 0.9rem;">✨ Powered by ONNX Runtime ✨</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -593,9 +689,10 @@ def main():
         st.markdown("""
         <div style="text-align: center;">
             <div class="metric-value">82%</div>
-            <div class="metric-label">Model Accuracy</div>
+            <div style="color: white; font-weight: 300;">Model Accuracy</div>
             <div style="margin-top: 0.5rem;">
                 <span class="badge badge-info">6 Species</span>
+                <span class="badge badge-rainbow">AI Powered</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -609,7 +706,8 @@ def main():
             info = get_bacteria_info(species)
             emoji = info.get('emoji', '🦠')
             st.markdown(f"""
-            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; 
+                        color: white; font-weight: 300;">
                 <span>{emoji}</span>
                 <span style="font-size: 0.9rem;">{display_name}</span>
             </div>
@@ -620,13 +718,14 @@ def main():
         # History
         if st.session_state.prediction_history:
             st.markdown("### 📜 Recent Predictions")
+            rainbow_emojis = ['🌈', '✨', '🌟', '💫', '⭐']
             for i, pred in enumerate(st.session_state.prediction_history[-5:]):
-                conf_color = "🟢" if pred['confidence'] > 70 else "🟡" if pred['confidence'] > 50 else "🔴"
+                emoji = rainbow_emojis[i % len(rainbow_emojis)]
                 st.markdown(f"""
                 <div class="info-card" style="padding: 0.75rem; margin: 0.25rem 0;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; color: white;">
                         <span><strong>{pred['predicted'].replace('_', ' ')}</strong></span>
-                        <span>{conf_color} {pred['confidence']:.0f}%</span>
+                        <span>{emoji} {pred['confidence']:.0f}%</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -634,25 +733,24 @@ def main():
         # Instructions
         st.divider()
         st.markdown("""
-        <div style="font-size: 0.85rem; color: rgba(45,52,54,0.6);">
+        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.8);">
             <p>📤 Upload a clear image</p>
             <p>🔬 Click Classify</p>
             <p>📊 View detailed analysis</p>
+            <p>🌈 Enjoy the rainbow!</p>
         </div>
         """, unsafe_allow_html=True)
     
     # Footer
     st.markdown("""
     <div class="footer">
-        <p>🧫 Bacteria Colony Classifier | Built with Streamlit, ONNX Runtime & ❤️</p>
-        <p style="font-size: 0.8rem; opacity: 0.7;">For educational and research purposes only</p>
+        <p style="font-size: 1.2rem;">🧫 Bacteria Colony Classifier | Built with ❤️ & 🌈</p>
+        <p style="font-size: 0.8rem; opacity: 0.8;">For educational and research purposes only</p>
     </div>
     """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
-                      
-          
 
      
                    
