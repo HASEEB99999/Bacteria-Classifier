@@ -38,6 +38,35 @@ st.markdown("""
     100% { background-position: 0% 50%; }
 }
 
+/* Particle Styles - Hidden by default but animated */
+.particle {
+    position: fixed;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+    animation: floatUp linear infinite;
+    opacity: 0.12;
+}
+
+@keyframes floatUp {
+    0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.12; }
+    90% { opacity: 0.12; }
+    100% { transform: translateY(-10vh) rotate(720deg); opacity: 0; }
+}
+
+/* Hide particles container from being visible as text */
+.particle-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+
 /* Bold Black Text Base */
 .stMarkdown, .stText, p, li, label {
     color: #000000 !important;
@@ -386,37 +415,19 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ============ FLOATING PARTICLES ============
+# ============ FLOATING PARTICLES (Fixed - No Text Showing) ============
 def add_particles():
     colors = ['#a5d6a7', '#66bb6a', '#ffe082', '#ffd54f', '#8bc34a', '#f9a825']
-    particles_html = """
-    <style>
-    .particle {
-        position: fixed;
-        border-radius: 50%;
-        pointer-events: none;
-        z-index: 0;
-        animation: floatUp linear infinite;
-        opacity: 0.12;
-    }
     
-    @keyframes floatUp {
-        0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-        10% { opacity: 0.12; }
-        90% { opacity: 0.12; }
-        100% { transform: translateY(-10vh) rotate(720deg); opacity: 0; }
-    }
-    </style>
-    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden;">
-    """
-    
+    # Generate particle divs
+    particles = []
     for i in range(15):
         size = random.randint(5, 15)
         left = random.randint(0, 100)
         duration = random.randint(15, 25)
         delay = random.randint(0, 15)
         color = random.choice(colors)
-        particles_html += f"""
+        particles.append(f"""
         <div class="particle" style="
             width: {size}px;
             height: {size}px;
@@ -426,11 +437,19 @@ def add_particles():
             animation-delay: {delay}s;
             box-shadow: 0 0 15px {color};
         "></div>
-        """
+        """)
     
-    particles_html += "</div>"
-    st.markdown(particles_html, unsafe_allow_html=True)
-
+    # Combine everything into one HTML string
+    particles_html = f"""
+    <div class="particle-container">
+        {''.join(particles)}
+    </div>
+    """
+    
+    # Use st.components.v1.html to render HTML without markdown interference
+    import streamlit.components.v1 as components
+    components.html(particles_html, height=0)
+    
 add_particles()
 
 # ============ SESSION STATE ============
