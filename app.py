@@ -1,4 +1,5 @@
-import streamlit as st
+
+   import streamlit as st
 import numpy as np
 from PIL import Image
 import onnxruntime as ort
@@ -19,53 +20,42 @@ st.set_page_config(
 st.markdown("""
     <style>
     /* Google Font */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
     
     * {
         font-family: 'Inter', sans-serif;
     }
     
-    /* Rainbow Animated Background */
+    /* Vibrant Animated Background */
     .stApp {
-        background: linear-gradient(135deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
+        background: linear-gradient(135deg, #ff6b6b 0%, #ffd93d 25%, #6bcb77 50%, #4d96ff 75%, #9b59b6 100%);
         background-size: 500% 500%;
-        animation: rainbowGradient 15s ease infinite;
+        animation: vibrantGradient 12s ease infinite;
     }
     
-    @keyframes rainbowGradient {
+    @keyframes vibrantGradient {
         0% { background-position: 0% 50%; }
-        20% { background-position: 50% 50%; }
-        40% { background-position: 100% 50%; }
-        60% { background-position: 50% 100%; }
-        80% { background-position: 0% 100%; }
+        25% { background-position: 50% 50%; }
+        50% { background-position: 100% 50%; }
+        75% { background-position: 50% 100%; }
         100% { background-position: 0% 50%; }
     }
     
-    /* Rainbow Floating Particles */
-    .particle {
-        position: fixed;
-        border-radius: 50%;
-        pointer-events: none;
-        opacity: 0.6;
-        animation: floatUp 10s infinite linear;
-    }
-    
-    @keyframes floatUp {
-        0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-        10% { opacity: 0.6; }
-        90% { opacity: 0.6; }
-        100% { transform: translateY(-10vh) rotate(720deg); opacity: 0; }
+    /* Bold Black Text Base */
+    .stMarkdown, .stText, p, li, label {
+        color: #000000 !important;
+        font-weight: 700 !important;
     }
     
     /* Glassmorphism Cards with Rainbow Border */
     .glass-card {
-        background: rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.85);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         border-radius: 24px;
-        border: 2px solid transparent;
+        border: 3px solid transparent;
         background-clip: padding-box;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
         padding: 2rem;
         transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
@@ -74,32 +64,36 @@ st.markdown("""
     
     @keyframes rainbowBorder {
         0% { border-color: #ff6b6b; box-shadow: 0 8px 32px rgba(255, 107, 107, 0.3); }
-        16% { border-color: #ffd93d; box-shadow: 0 8px 32px rgba(255, 217, 61, 0.3); }
-        33% { border-color: #6bcb77; box-shadow: 0 8px 32px rgba(107, 203, 119, 0.3); }
-        50% { border-color: #4d96ff; box-shadow: 0 8px 32px rgba(77, 150, 255, 0.3); }
-        66% { border-color: #9b59b6; box-shadow: 0 8px 32px rgba(155, 89, 182, 0.3); }
-        83% { border-color: #ff6b6b; box-shadow: 0 8px 32px rgba(255, 107, 107, 0.3); }
+        20% { border-color: #ffd93d; box-shadow: 0 8px 32px rgba(255, 217, 61, 0.3); }
+        40% { border-color: #6bcb77; box-shadow: 0 8px 32px rgba(107, 203, 119, 0.3); }
+        60% { border-color: #4d96ff; box-shadow: 0 8px 32px rgba(77, 150, 255, 0.3); }
+        80% { border-color: #9b59b6; box-shadow: 0 8px 32px rgba(155, 89, 182, 0.3); }
         100% { border-color: #ff6b6b; box-shadow: 0 8px 32px rgba(255, 107, 107, 0.3); }
     }
     
     .glass-card:hover {
-        transform: translateY(-10px) scale(1.02);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        transform: translateY(-8px) scale(1.01);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
     }
     
-    /* Main Title with Rainbow Text */
+    /* Main Title - Bold Black with Rainbow Accent */
     .main-title {
         text-align: center;
-        font-size: 4.5rem;
+        font-size: 4.2rem;
         font-weight: 900;
-        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6, #ff6b6b);
+        color: #000000 !important;
+        text-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
+        padding: 1rem 0;
+        letter-spacing: -0.02em;
+    }
+    
+    .main-title .rainbow-text {
+        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
         background-size: 300% 300%;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
         animation: rainbowText 4s ease infinite;
-        padding: 1rem 0;
-        text-shadow: none;
     }
     
     @keyframes rainbowText {
@@ -108,38 +102,43 @@ st.markdown("""
         100% { background-position: 0% 50%; }
     }
     
-    /* Subtitle Glow */
+    /* Subtitle - Bold Black */
     .sub-title {
         text-align: center;
-        color: white;
+        color: #000000 !important;
         font-size: 1.3rem;
-        font-weight: 300;
+        font-weight: 700 !important;
         margin-bottom: 2rem;
-        text-shadow: 0 0 20px rgba(255,255,255,0.3), 0 0 60px rgba(255,255,255,0.1);
-        animation: glowPulse 2s ease-in-out infinite;
+        text-shadow: 0 2px 10px rgba(255, 255, 255, 0.3);
     }
     
-    @keyframes glowPulse {
-        0%, 100% { text-shadow: 0 0 20px rgba(255,255,255,0.3); }
-        50% { text-shadow: 0 0 40px rgba(255,255,255,0.6), 0 0 80px rgba(255,255,255,0.2); }
-    }
-    
-    /* Upload Area */
+    /* Upload Area - Bold Text */
     .upload-area {
-        border: 3px dashed rgba(255, 255, 255, 0.4);
+        border: 3px dashed rgba(0, 0, 0, 0.3);
         border-radius: 24px;
         padding: 3rem 2rem;
         text-align: center;
-        background: rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.75);
         backdrop-filter: blur(10px);
         transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
-        animation: rainbowBorder 4s linear infinite;
     }
     
     .upload-area:hover {
-        transform: scale(1.05);
-        background: rgba(255, 255, 255, 0.2);
+        transform: scale(1.03);
+        background: rgba(255, 255, 255, 0.9);
+        border-color: #000000;
+    }
+    
+    .upload-area h3 {
+        color: #000000 !important;
+        font-weight: 800 !important;
+    }
+    
+    .upload-area p {
+        color: #000000 !important;
+        font-weight: 600 !important;
+        opacity: 0.8;
     }
     
     .upload-icon {
@@ -151,19 +150,19 @@ st.markdown("""
     
     @keyframes bounce {
         0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-20px); }
+        50% { transform: translateY(-15px); }
     }
     
-    /* Prediction Box */
+    /* Prediction Box - Bold Black Text */
     .prediction-box {
-        background: rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.9);
         backdrop-filter: blur(20px);
         border-radius: 24px;
         padding: 2.5rem;
         text-align: center;
-        border: 2px solid rgba(255,255,255,0.3);
-        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-        animation: fadeInUp 0.6s ease, rainbowBorder 3s linear infinite;
+        border: 3px solid #000000;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        animation: fadeInUp 0.6s ease;
     }
     
     @keyframes fadeInUp {
@@ -173,220 +172,294 @@ st.markdown("""
     
     .prediction-box h2 {
         font-size: 3rem;
-        font-weight: 800;
+        font-weight: 900 !important;
+        color: #000000 !important;
         margin: 0.5rem 0;
-        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
-        background-size: 300% 300%;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        animation: rainbowText 3s ease infinite;
+        text-shadow: 0 2px 10px rgba(255, 255, 255, 0.3);
     }
     
-    /* Confidence Colors with Rainbow */
+    .prediction-box p {
+        color: #000000 !important;
+        font-weight: 700 !important;
+    }
+    
+    /* Confidence Colors with Bold Text */
     .confidence-high { 
-        background: linear-gradient(90deg, #00b894, #00cec9);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        font-weight: 800;
+        color: #00b894 !important;
+        font-weight: 900 !important;
         font-size: 2.2rem;
+        -webkit-text-fill-color: #00b894 !important;
     }
     
     .confidence-medium { 
-        background: linear-gradient(90deg, #fdcb6e, #f39c12);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        font-weight: 800;
+        color: #f39c12 !important;
+        font-weight: 900 !important;
         font-size: 2.2rem;
+        -webkit-text-fill-color: #f39c12 !important;
     }
     
     .confidence-low { 
-        background: linear-gradient(90deg, #e17055, #d63031);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        font-weight: 800;
+        color: #e17055 !important;
+        font-weight: 900 !important;
         font-size: 2.2rem;
+        -webkit-text-fill-color: #e17055 !important;
     }
     
-    /* Rainbow Badges */
+    /* Bold Badges */
     .badge {
         display: inline-block;
-        padding: 0.4rem 1.5rem;
+        padding: 0.5rem 1.5rem;
         border-radius: 50px;
-        font-weight: 600;
-        font-size: 0.9rem;
+        font-weight: 800 !important;
+        font-size: 0.95rem;
         margin: 0.25rem;
-        transition: all 0.5s ease;
-        animation: rainbowBorder 3s linear infinite;
+        color: #000000 !important;
+        transition: all 0.3s ease;
+        border: 2px solid #000000;
     }
     
     .badge-success {
         background: linear-gradient(135deg, #00b894, #00cec9);
-        color: white;
-        box-shadow: 0 4px 20px rgba(0, 206, 201, 0.4);
+        color: #000000 !important;
+        box-shadow: 0 4px 20px rgba(0, 206, 201, 0.3);
     }
     
     .badge-warning {
         background: linear-gradient(135deg, #fdcb6e, #f39c12);
-        color: white;
-        box-shadow: 0 4px 20px rgba(253, 203, 110, 0.4);
+        color: #000000 !important;
+        box-shadow: 0 4px 20px rgba(253, 203, 110, 0.3);
     }
     
     .badge-danger {
         background: linear-gradient(135deg, #e17055, #d63031);
-        color: white;
-        box-shadow: 0 4px 20px rgba(225, 112, 85, 0.4);
+        color: #000000 !important;
+        box-shadow: 0 4px 20px rgba(225, 112, 85, 0.3);
     }
     
     .badge-info {
         background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+        color: #000000 !important;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
     }
     
     .badge-rainbow {
         background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
         background-size: 300% 300%;
         animation: rainbowText 3s ease infinite;
-        color: white;
-        font-weight: 700;
+        color: #000000 !important;
+        font-weight: 800 !important;
+        border-color: #000000;
     }
     
-    /* Rainbow Button */
+    /* Vibrant Button - Bold Text */
     .stButton > button {
-        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6, #ff6b6b) !important;
+        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6) !important;
         background-size: 300% 300% !important;
         animation: rainbowText 3s ease infinite !important;
-        color: white !important;
-        font-weight: 700 !important;
+        color: #000000 !important;
+        font-weight: 900 !important;
         font-size: 1.3rem !important;
         padding: 1rem 2.5rem !important;
-        border: none !important;
+        border: 3px solid #000000 !important;
         border-radius: 50px !important;
         transition: all 0.3s ease !important;
-        box-shadow: 0 4px 30px rgba(255, 255, 255, 0.3) !important;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2) !important;
         width: 100% !important;
         letter-spacing: 0.5px !important;
     }
     
     .stButton > button:hover {
         transform: translateY(-5px) scale(1.02) !important;
-        box-shadow: 0 10px 50px rgba(255, 255, 255, 0.5) !important;
+        box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3) !important;
     }
     
     .stButton > button:active {
         transform: translateY(0px) !important;
     }
     
-    /* Progress Bar Rainbow */
+    /* Progress Bar - Vibrant */
     .stProgress > div > div {
         background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6) !important;
         background-size: 300% 300% !important;
         animation: rainbowText 3s ease infinite !important;
         border-radius: 50px !important;
-        height: 12px !important;
+        height: 14px !important;
+        border: 2px solid #000000 !important;
     }
     
-    /* Sidebar Rainbow */
+    /* Sidebar - Bold Black Text */
     .css-1d391kg, .css-1d391kg {
-        background: rgba(255, 255, 255, 0.15) !important;
+        background: rgba(255, 255, 255, 0.85) !important;
         backdrop-filter: blur(20px) !important;
-        border-right: 2px solid rgba(255, 255, 255, 0.2) !important;
-        animation: rainbowBorder 4s linear infinite !important;
+        border-right: 3px solid #000000 !important;
     }
     
-    /* Info Cards */
+    .css-1d391kg p, .css-1d391kg h3 {
+        color: #000000 !important;
+        font-weight: 700 !important;
+    }
+    
+    /* Info Cards - Bold Text */
     .info-card {
-        background: rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.85);
         backdrop-filter: blur(10px);
         border-radius: 16px;
         padding: 1.5rem;
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        border: 2px solid #000000;
         margin: 0.5rem 0;
         transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        animation: rainbowBorder 4s linear infinite;
     }
     
     .info-card:hover {
-        transform: translateX(10px) scale(1.02);
-        background: rgba(255, 255, 255, 0.25);
+        transform: translateX(8px) scale(1.01);
+        background: rgba(255, 255, 255, 0.95);
     }
     
-    /* Metrics Rainbow */
+    .info-card h4 {
+        color: #000000 !important;
+        font-weight: 800 !important;
+        margin-bottom: 0.5rem;
+    }
+    
+    .info-card p {
+        color: #000000 !important;
+        font-weight: 600 !important;
+        margin: 0.25rem 0;
+    }
+    
+    .info-card strong {
+        color: #000000 !important;
+        font-weight: 900 !important;
+    }
+    
+    /* Metrics - Bold Black */
     .metric-value {
-        font-size: 3rem;
-        font-weight: 900;
-        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
-        background-size: 300% 300%;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        animation: rainbowText 3s ease infinite;
+        font-size: 3.2rem;
+        font-weight: 900 !important;
+        color: #000000 !important;
     }
     
-    /* Footer */
+    .metric-label {
+        color: #000000 !important;
+        font-size: 1rem;
+        font-weight: 700 !important;
+    }
+    
+    /* Sidebar Text Override */
+    .css-1d391kg .stMarkdown p,
+    .css-1d391kg .stMarkdown li {
+        color: #000000 !important;
+        font-weight: 700 !important;
+    }
+    
+    /* Tabs - Bold Black */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background: rgba(255, 255, 255, 0.7);
+        border-radius: 16px;
+        padding: 0.5rem;
+        border: 2px solid #000000;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 12px;
+        padding: 0.5rem 1.5rem;
+        font-weight: 700 !important;
+        color: #000000 !important;
+        transition: all 0.3s ease;
+    }
+    
+    .stTabs [data-baseweb="tab"]:hover {
+        background: rgba(0, 0, 0, 0.1);
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: rgba(0, 0, 0, 0.15) !important;
+        backdrop-filter: blur(10px);
+        color: #000000 !important;
+        font-weight: 800 !important;
+    }
+    
+    /* Footer - Bold Black */
     .footer {
         text-align: center;
         padding: 2rem 0;
-        color: white;
-        font-size: 0.9rem;
+        color: #000000 !important;
+        font-size: 1rem;
+        font-weight: 700 !important;
         margin-top: 2rem;
-        text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        text-shadow: 0 2px 10px rgba(255, 255, 255, 0.3);
     }
     
-    /* Loading Animation */
-    @keyframes shimmer {
-        0% { background-position: -1000px 0; }
-        100% { background-position: 1000px 0; }
+    /* File Uploader Text */
+    .stFileUploader label {
+        color: #000000 !important;
+        font-weight: 700 !important;
     }
     
-    .loading-text {
-        background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
-        background-size: 300% 300%;
-        animation: rainbowText 1.5s ease infinite;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        font-weight: 700;
+    /* Expander Text */
+    .streamlit-expanderHeader {
+        color: #000000 !important;
+        font-weight: 800 !important;
+        font-size: 1.1rem !important;
     }
     
-    /* Sparkle animation for results */
-    @keyframes sparkle {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.8; transform: scale(1.1); }
+    /* Loading Spinner Text */
+    .stSpinner > div {
+        color: #000000 !important;
+        font-weight: 700 !important;
     }
     
-    .sparkle {
-        animation: sparkle 1s ease-in-out infinite;
+    /* Success/Warning/Error Messages */
+    .stAlert {
+        color: #000000 !important;
+        font-weight: 700 !important;
+    }
+    
+    .stAlert p {
+        color: #000000 !important;
+        font-weight: 700 !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# ============ RAINBOW PARTICLES ============
+# ============ FLOATING PARTICLES (Subtle) ============
 def add_particles():
-    colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#9b59b6', '#fd79a8', '#fdcb6e']
+    colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#9b59b6', '#fd79a8']
     particles = ""
-    for i in range(20):
-        size = random.randint(8, 25)
+    for i in range(12):
+        size = random.randint(4, 12)
         left = random.randint(0, 100)
-        duration = random.randint(8, 15)
-        delay = random.randint(0, 10)
+        duration = random.randint(15, 25)
+        delay = random.randint(0, 15)
         color = random.choice(colors)
         particles += f"""
         <div class="particle" style="
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
             width: {size}px;
             height: {size}px;
             left: {left}%;
             background: {color};
-            animation-duration: {duration}s;
+            animation: floatUp {duration}s ease-in-out infinite;
             animation-delay: {delay}s;
-            box-shadow: 0 0 20px {color};
+            box-shadow: 0 0 15px {color};
+            opacity: 0.15;
+            z-index: 0;
         "></div>
         """
-    st.markdown(f'<div>{particles}</div>', unsafe_allow_html=True)
+    st.markdown(f"""
+    <style>
+    @keyframes floatUp {{
+        0% {{ transform: translateY(100vh) rotate(0deg); opacity: 0; }}
+        10% {{ opacity: 0.15; }}
+        90% {{ opacity: 0.15; }}
+        100% {{ transform: translateY(-10vh) rotate(720deg); opacity: 0; }}
+    }}
+    </style>
+    <div>{particles}</div>
+    """, unsafe_allow_html=True)
 
 add_particles()
 
@@ -495,12 +568,14 @@ def get_bacteria_info(bacteria_name):
 
 # ============ MAIN APP ============
 def main():
-    # Header with Rainbow
+    # Header - Bold Black Title
     st.markdown("""
-        <div style="text-align: center; padding: 1rem 0;">
-            <div style="font-size: 6rem; margin-bottom: -1.5rem; animation: bounce 2s ease-in-out infinite;">🧫</div>
-            <h1 class="main-title">✨ Bacteria Colony Classifier ✨</h1>
-            <p class="sub-title">🌟 Upload an image of a bacterial colony to identify the species 🌟</p>
+        <div style="text-align: center; padding: 0.5rem 0;">
+            <div style="font-size: 5rem; margin-bottom: -1.5rem; animation: bounce 2s ease-in-out infinite;">🧫</div>
+            <h1 class="main-title">
+                Bacteria <span class="rainbow-text">Colony</span> Classifier
+            </h1>
+            <p class="sub-title">🔬 Upload an image to identify bacteria species with AI-powered precision</p>
         </div>
     """, unsafe_allow_html=True)
     
@@ -514,12 +589,12 @@ def main():
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        # Upload Section with Rainbow Border
+        # Upload Section
         st.markdown("""
         <div class="upload-area">
             <span class="upload-icon">📸</span>
-            <h3 style="color: white; font-weight: 600;">Drop your image here</h3>
-            <p style="color: rgba(255,255,255,0.8);">or click to browse</p>
+            <h3>Drop your bacterial colony image here</h3>
+            <p>or click to browse files (JPG, PNG, TIFF)</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -537,10 +612,10 @@ def main():
             st.image(image, caption="📸 Uploaded Image", use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
             
-            # Rainbow Classify Button
-            if st.button("🌈 Classify Bacteria", use_container_width=True):
+            # Classify Button
+            if st.button("🔬 Classify Bacteria 🧫", use_container_width=True):
                 with st.spinner("🔍 Analyzing colony morphology..."):
-                    time.sleep(0.8)
+                    time.sleep(0.5)
                     predicted, confidence, all_predictions = predict_image(
                         image, session, class_names
                     )
@@ -548,17 +623,17 @@ def main():
                     # Determine confidence level
                     if confidence > 70:
                         conf_level = "High"
-                        conf_emoji = "✨"
+                        conf_emoji = "✅"
                         conf_color = "confidence-high"
                         badge = "badge-success"
                     elif confidence > 50:
                         conf_level = "Medium"
-                        conf_emoji = "🌟"
+                        conf_emoji = "⚠️"
                         conf_color = "confidence-medium"
                         badge = "badge-warning"
                     else:
                         conf_level = "Low"
-                        conf_emoji = "💫"
+                        conf_emoji = "❌"
                         conf_color = "confidence-low"
                         badge = "badge-danger"
                     
@@ -574,10 +649,10 @@ def main():
                     
                     st.markdown(f"""
                     <div class="prediction-box">
-                        <div style="font-size: 4rem; margin-bottom: -0.5rem;">{info.get('emoji', '🧬')}</div>
-                        <p style="color: rgba(255,255,255,0.8); margin: 0; font-weight: 300;">🎯 Predicted Species</p>
+                        <div style="font-size: 3.5rem; margin-bottom: -0.5rem;">{info.get('emoji', '🧬')}</div>
+                        <p style="color: #000000 !important; font-weight: 700 !important; margin: 0;">Predicted Species</p>
                         <h2>{predicted.replace('_', ' ')}</h2>
-                        <div class="{conf_color}" style="font-size: 2.5rem; font-weight: 800; margin: 0.5rem 0;">
+                        <div class="{conf_color}" style="font-size: 2.5rem; font-weight: 900;">
                             {confidence:.1f}%
                         </div>
                         <div>
@@ -585,14 +660,14 @@ def main():
                             <span class="badge badge-rainbow">🌈 AI Verified</span>
                         </div>
                         <div style="margin-top: 1rem;">
-                            <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 0.95rem; font-weight: 300;">
-                                ✨ {info.get('description', '')}
+                            <p style="color: #000000 !important; font-weight: 600 !important; margin: 0; font-size: 1rem;">
+                                {info.get('description', '')}
                             </p>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Rainbow Progress Bar
+                    # Confidence Bar
                     st.progress(int(confidence))
                     
                     # Morphology Info
@@ -628,7 +703,7 @@ def main():
                                 </div>
                                 """, unsafe_allow_html=True)
                     
-                    # Confidence Chart with Rainbow Colors
+                    # Confidence Chart
                     st.markdown("### 📈 Confidence Scores")
                     
                     sorted_preds = dict(sorted(all_predictions.items(), key=lambda x: x[1], reverse=True))
@@ -643,6 +718,7 @@ def main():
                             marker_color=colors,
                             text=[f"{v:.1f}%" for v in sorted_preds.values()],
                             textposition='outside',
+                            textfont=dict(color='#000000', size=14, weight='bold'),
                             hovertemplate='<b>%{x}</b><br>Confidence: %{y:.1f}%<extra></extra>'
                         )
                     ])
@@ -654,32 +730,28 @@ def main():
                         height=450,
                         xaxis_tickangle=-45,
                         showlegend=False,
-                        plot_bgcolor='rgba(0,0,0,0)',
-                        paper_bgcolor='rgba(0,0,0,0)',
+                        plot_bgcolor='rgba(255,255,255,0.7)',
+                        paper_bgcolor='rgba(255,255,255,0.3)',
                         margin=dict(l=20, r=20, t=20, b=80),
-                        hovermode='closest'
+                        hovermode='closest',
+                        font=dict(color='#000000', weight='bold')
                     )
                     
                     fig.update_traces(
-                        marker_line_color='rgba(255,255,255,0.3)',
+                        marker_line_color='#000000',
                         marker_line_width=2,
                         opacity=0.9
                     )
                     
                     st.plotly_chart(fig, use_container_width=True)
     
-    # Rainbow Sidebar
+    # Sidebar
     with st.sidebar:
         st.markdown("""
         <div style="text-align: center; padding: 1rem 0;">
-            <div style="font-size: 4rem; animation: bounce 2s ease-in-out infinite;">🧫</div>
-            <h3 style="font-weight: 800; background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
-            background-size: 300% 300%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: rainbowText 3s ease infinite;">Bacteria AI</h3>
-            <p style="color: rgba(255,255,255,0.8); font-size: 0.9rem;">✨ Powered by ONNX Runtime ✨</p>
+            <div style="font-size: 3.5rem; animation: bounce 2s ease-in-out infinite;">🧫</div>
+            <h3 style="font-weight: 900 !important; color: #000000 !important;">Bacteria AI</h3>
+            <p style="color: #000000 !important; font-weight: 700 !important; font-size: 0.9rem;">Powered by ONNX Runtime</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -689,7 +761,7 @@ def main():
         st.markdown("""
         <div style="text-align: center;">
             <div class="metric-value">82%</div>
-            <div style="color: white; font-weight: 300;">Model Accuracy</div>
+            <div class="metric-label">Model Accuracy</div>
             <div style="margin-top: 0.5rem;">
                 <span class="badge badge-info">6 Species</span>
                 <span class="badge badge-rainbow">AI Powered</span>
@@ -707,9 +779,9 @@ def main():
             emoji = info.get('emoji', '🦠')
             st.markdown(f"""
             <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; 
-                        color: white; font-weight: 300;">
+                        color: #000000 !important; font-weight: 700 !important;">
                 <span>{emoji}</span>
-                <span style="font-size: 0.9rem;">{display_name}</span>
+                <span style="font-size: 0.9rem; font-weight: 700 !important;">{display_name}</span>
             </div>
             """, unsafe_allow_html=True)
         
@@ -723,9 +795,9 @@ def main():
                 emoji = rainbow_emojis[i % len(rainbow_emojis)]
                 st.markdown(f"""
                 <div class="info-card" style="padding: 0.75rem; margin: 0.25rem 0;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; color: white;">
-                        <span><strong>{pred['predicted'].replace('_', ' ')}</strong></span>
-                        <span>{emoji} {pred['confidence']:.0f}%</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; color: #000000 !important;">
+                        <span style="font-weight: 800 !important;">{pred['predicted'].replace('_', ' ')}</span>
+                        <span style="font-weight: 700 !important;">{emoji} {pred['confidence']:.0f}%</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -733,24 +805,21 @@ def main():
         # Instructions
         st.divider()
         st.markdown("""
-        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.8);">
+        <div style="font-size: 0.9rem; color: #000000 !important; font-weight: 700 !important;">
             <p>📤 Upload a clear image</p>
             <p>🔬 Click Classify</p>
             <p>📊 View detailed analysis</p>
-            <p>🌈 Enjoy the rainbow!</p>
+            <p>🌈 Enjoy the colors!</p>
         </div>
         """, unsafe_allow_html=True)
     
     # Footer
     st.markdown("""
     <div class="footer">
-        <p style="font-size: 1.2rem;">🧫 Bacteria Colony Classifier | Built with ❤️ & 🌈</p>
-        <p style="font-size: 0.8rem; opacity: 0.8;">For educational and research purposes only</p>
+        <p style="font-size: 1.1rem; font-weight: 800 !important;">🧫 Bacteria Colony Classifier | Built with ❤️ & 🌈</p>
+        <p style="font-size: 0.85rem; font-weight: 600 !important; opacity: 0.8;">For educational and research purposes only</p>
     </div>
     """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
-
-     
-                   
