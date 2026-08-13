@@ -25,18 +25,16 @@ st.markdown("""
     font-family: 'Inter', sans-serif;
 }
 
-/* Vibrant Animated Background */
+/* Light Green & Yellow Animated Background */
 .stApp {
-    background: linear-gradient(135deg, #ff6b6b 0%, #ffd93d 25%, #6bcb77 50%, #4d96ff 75%, #9b59b6 100%);
-    background-size: 500% 500%;
-    animation: vibrantGradient 12s ease infinite;
+    background: linear-gradient(135deg, #d4edda 0%, #fff3cd 25%, #d4edda 50%, #fff3cd 75%, #d4edda 100%);
+    background-size: 400% 400%;
+    animation: softGradient 15s ease infinite;
 }
 
-@keyframes vibrantGradient {
+@keyframes softGradient {
     0% { background-position: 0% 50%; }
-    25% { background-position: 50% 50%; }
     50% { background-position: 100% 50%; }
-    75% { background-position: 50% 100%; }
     100% { background-position: 0% 50%; }
 }
 
@@ -46,56 +44,46 @@ st.markdown("""
     font-weight: 700 !important;
 }
 
-/* Glassmorphism Cards with Rainbow Border */
+/* Glassmorphism Cards with Light Border */
 .glass-card {
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-radius: 24px;
-    border: 3px solid transparent;
+    border: 3px solid #8bc34a;
     background-clip: padding-box;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 32px rgba(139, 195, 74, 0.25);
     padding: 2rem;
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
-    animation: rainbowBorder 4s linear infinite;
-}
-
-@keyframes rainbowBorder {
-    0% { border-color: #ff6b6b; box-shadow: 0 8px 32px rgba(255, 107, 107, 0.3); }
-    20% { border-color: #ffd93d; box-shadow: 0 8px 32px rgba(255, 217, 61, 0.3); }
-    40% { border-color: #6bcb77; box-shadow: 0 8px 32px rgba(107, 203, 119, 0.3); }
-    60% { border-color: #4d96ff; box-shadow: 0 8px 32px rgba(77, 150, 255, 0.3); }
-    80% { border-color: #9b59b6; box-shadow: 0 8px 32px rgba(155, 89, 182, 0.3); }
-    100% { border-color: #ff6b6b; box-shadow: 0 8px 32px rgba(255, 107, 107, 0.3); }
 }
 
 .glass-card:hover {
     transform: translateY(-8px) scale(1.01);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 20px 60px rgba(139, 195, 74, 0.35);
 }
 
-/* Main Title - Bold Black with Rainbow Accent */
+/* Main Title - Bold Black */
 .main-title {
     text-align: center;
     font-size: 4.2rem;
     font-weight: 900;
     color: #000000 !important;
-    text-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
+    text-shadow: 0 4px 20px rgba(139, 195, 74, 0.2);
     padding: 1rem 0;
     letter-spacing: -0.02em;
 }
 
-.main-title .rainbow-text {
-    background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
+.main-title .green-yellow-text {
+    background: linear-gradient(90deg, #558b2f, #f9a825, #558b2f);
     background-size: 300% 300%;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    animation: rainbowText 4s ease infinite;
+    animation: greenYellowText 4s ease infinite;
 }
 
-@keyframes rainbowText {
+@keyframes greenYellowText {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
@@ -108,12 +96,12 @@ st.markdown("""
     font-size: 1.3rem;
     font-weight: 700 !important;
     margin-bottom: 2rem;
-    text-shadow: 0 2px 10px rgba(255, 255, 255, 0.3);
+    text-shadow: 0 2px 10px rgba(139, 195, 74, 0.15);
 }
 
 /* Upload Area - Bold Text */
 .upload-area {
-    border: 3px dashed rgba(0, 0, 0, 0.3);
+    border: 3px dashed #8bc34a;
     border-radius: 24px;
     padding: 3rem 2rem;
     text-align: center;
@@ -126,7 +114,7 @@ st.markdown("""
 .upload-area:hover {
     transform: scale(1.03);
     background: rgba(255, 255, 255, 0.9);
-    border-color: #000000;
+    border-color: #558b2f;
 }
 
 .upload-area h3 {
@@ -154,13 +142,13 @@ st.markdown("""
 
 /* Prediction Box - Bold Black Text */
 .prediction-box {
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(20px);
     border-radius: 24px;
     padding: 2.5rem;
     text-align: center;
-    border: 3px solid #000000;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    border: 3px solid #8bc34a;
+    box-shadow: 0 8px 32px rgba(139, 195, 74, 0.25);
     animation: fadeInUp 0.6s ease;
 }
 
@@ -174,7 +162,7 @@ st.markdown("""
     font-weight: 900 !important;
     color: #000000 !important;
     margin: 0.5rem 0;
-    text-shadow: 0 2px 10px rgba(255, 255, 255, 0.3);
+    text-shadow: 0 2px 10px rgba(139, 195, 74, 0.15);
 }
 
 .prediction-box p {
@@ -184,27 +172,27 @@ st.markdown("""
 
 /* Confidence Colors with Bold Text */
 .confidence-high { 
-    color: #00b894 !important;
+    color: #2e7d32 !important;
     font-weight: 900 !important;
     font-size: 2.2rem;
-    -webkit-text-fill-color: #00b894 !important;
+    -webkit-text-fill-color: #2e7d32 !important;
 }
 
 .confidence-medium { 
-    color: #f39c12 !important;
+    color: #f9a825 !important;
     font-weight: 900 !important;
     font-size: 2.2rem;
-    -webkit-text-fill-color: #f39c12 !important;
+    -webkit-text-fill-color: #f9a825 !important;
 }
 
 .confidence-low { 
-    color: #e17055 !important;
+    color: #c62828 !important;
     font-weight: 900 !important;
     font-size: 2.2rem;
-    -webkit-text-fill-color: #e17055 !important;
+    -webkit-text-fill-color: #c62828 !important;
 }
 
-/* Bold Badges */
+/* Bold Badges - Green & Yellow Theme */
 .badge {
     display: inline-block;
     padding: 0.5rem 1.5rem;
@@ -218,43 +206,43 @@ st.markdown("""
 }
 
 .badge-success {
-    background: linear-gradient(135deg, #00b894, #00cec9);
+    background: linear-gradient(135deg, #a5d6a7, #66bb6a);
     color: #000000 !important;
-    box-shadow: 0 4px 20px rgba(0, 206, 201, 0.3);
+    box-shadow: 0 4px 20px rgba(102, 187, 106, 0.3);
 }
 
 .badge-warning {
-    background: linear-gradient(135deg, #fdcb6e, #f39c12);
+    background: linear-gradient(135deg, #ffe082, #ffd54f);
     color: #000000 !important;
-    box-shadow: 0 4px 20px rgba(253, 203, 110, 0.3);
+    box-shadow: 0 4px 20px rgba(255, 213, 79, 0.3);
 }
 
 .badge-danger {
-    background: linear-gradient(135deg, #e17055, #d63031);
+    background: linear-gradient(135deg, #ef9a9a, #ef5350);
     color: #000000 !important;
-    box-shadow: 0 4px 20px rgba(225, 112, 85, 0.3);
+    box-shadow: 0 4px 20px rgba(239, 83, 80, 0.3);
 }
 
 .badge-info {
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #a5d6a7, #66bb6a);
     color: #000000 !important;
-    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 20px rgba(102, 187, 106, 0.3);
 }
 
-.badge-rainbow {
-    background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6);
+.badge-green-yellow {
+    background: linear-gradient(90deg, #a5d6a7, #ffe082, #a5d6a7);
     background-size: 300% 300%;
-    animation: rainbowText 3s ease infinite;
+    animation: greenYellowText 3s ease infinite;
     color: #000000 !important;
     font-weight: 800 !important;
     border-color: #000000;
 }
 
-/* Vibrant Button - Bold Text */
+/* Vibrant Button - Green & Yellow */
 .stButton > button {
-    background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6) !important;
+    background: linear-gradient(90deg, #66bb6a, #ffd54f, #66bb6a) !important;
     background-size: 300% 300% !important;
-    animation: rainbowText 3s ease infinite !important;
+    animation: greenYellowText 3s ease infinite !important;
     color: #000000 !important;
     font-weight: 900 !important;
     font-size: 1.3rem !important;
@@ -262,25 +250,25 @@ st.markdown("""
     border: 3px solid #000000 !important;
     border-radius: 50px !important;
     transition: all 0.3s ease !important;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2) !important;
+    box-shadow: 0 4px 30px rgba(102, 187, 106, 0.3) !important;
     width: 100% !important;
     letter-spacing: 0.5px !important;
 }
 
 .stButton > button:hover {
     transform: translateY(-5px) scale(1.02) !important;
-    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3) !important;
+    box-shadow: 0 10px 50px rgba(102, 187, 106, 0.4) !important;
 }
 
 .stButton > button:active {
     transform: translateY(0px) !important;
 }
 
-/* Progress Bar - Vibrant */
+/* Progress Bar - Green & Yellow */
 .stProgress > div > div {
-    background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6) !important;
+    background: linear-gradient(90deg, #66bb6a, #ffd54f, #66bb6a) !important;
     background-size: 300% 300% !important;
-    animation: rainbowText 3s ease infinite !important;
+    animation: greenYellowText 3s ease infinite !important;
     border-radius: 50px !important;
     height: 14px !important;
     border: 2px solid #000000 !important;
@@ -288,9 +276,9 @@ st.markdown("""
 
 /* Sidebar - Bold Black Text */
 .css-1d391kg, .css-1d391kg {
-    background: rgba(255, 255, 255, 0.85) !important;
+    background: rgba(255, 255, 255, 0.9) !important;
     backdrop-filter: blur(20px) !important;
-    border-right: 3px solid #000000 !important;
+    border-right: 3px solid #8bc34a !important;
 }
 
 .css-1d391kg p, .css-1d391kg h3 {
@@ -304,7 +292,7 @@ st.markdown("""
     backdrop-filter: blur(10px);
     border-radius: 16px;
     padding: 1.5rem;
-    border: 2px solid #000000;
+    border: 2px solid #8bc34a;
     margin: 0.5rem 0;
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -350,7 +338,7 @@ st.markdown("""
     background: rgba(255, 255, 255, 0.7);
     border-radius: 16px;
     padding: 0.5rem;
-    border: 2px solid #000000;
+    border: 2px solid #8bc34a;
 }
 
 .stTabs [data-baseweb="tab"] {
@@ -362,11 +350,11 @@ st.markdown("""
 }
 
 .stTabs [data-baseweb="tab"]:hover {
-    background: rgba(0, 0, 0, 0.1);
+    background: rgba(139, 195, 74, 0.15);
 }
 
 .stTabs [aria-selected="true"] {
-    background: rgba(0, 0, 0, 0.15) !important;
+    background: rgba(139, 195, 74, 0.25) !important;
     backdrop-filter: blur(10px);
     color: #000000 !important;
     font-weight: 800 !important;
@@ -380,7 +368,7 @@ st.markdown("""
     font-size: 1rem;
     font-weight: 700 !important;
     margin-top: 2rem;
-    text-shadow: 0 2px 10px rgba(255, 255, 255, 0.3);
+    text-shadow: 0 2px 10px rgba(139, 195, 74, 0.1);
 }
 
 /* File Uploader Text */
@@ -398,9 +386,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ============ FLOATING PARTICLES (Fixed) ============
+# ============ FLOATING PARTICLES ============
 def add_particles():
-    colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#9b59b6', '#fd79a8']
+    colors = ['#a5d6a7', '#66bb6a', '#ffe082', '#ffd54f', '#8bc34a', '#f9a825']
     particles_html = """
     <style>
     .particle {
@@ -409,13 +397,13 @@ def add_particles():
         pointer-events: none;
         z-index: 0;
         animation: floatUp linear infinite;
-        opacity: 0.15;
+        opacity: 0.12;
     }
     
     @keyframes floatUp {
         0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-        10% { opacity: 0.15; }
-        90% { opacity: 0.15; }
+        10% { opacity: 0.12; }
+        90% { opacity: 0.12; }
         100% { transform: translateY(-10vh) rotate(720deg); opacity: 0; }
     }
     </style>
@@ -555,7 +543,7 @@ def main():
         <div style="text-align: center; padding: 0.5rem 0;">
             <div style="font-size: 5rem; margin-bottom: -1.5rem; animation: bounce 2s ease-in-out infinite;">🧫</div>
             <h1 class="main-title">
-                Bacteria <span class="rainbow-text">Colony</span> Classifier
+                Bacteria <span class="green-yellow-text">Colony</span> Classifier
             </h1>
             <p class="sub-title">🔬 Upload an image to identify bacteria species with AI-powered precision</p>
         </div>
@@ -639,7 +627,7 @@ def main():
                         </div>
                         <div>
                             <span class="badge {badge}">{conf_emoji} {conf_level} Confidence</span>
-                            <span class="badge badge-rainbow">🌈 AI Verified</span>
+                            <span class="badge badge-green-yellow">🌿 AI Verified</span>
                         </div>
                         <div style="margin-top: 1rem;">
                             <p style="color: #000000 !important; font-weight: 600 !important; margin: 0; font-size: 1rem;">
@@ -690,8 +678,8 @@ def main():
 
                     sorted_preds = dict(sorted(all_predictions.items(), key=lambda x: x[1], reverse=True))
 
-                    rainbow_colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#9b59b6', '#fd79a8']
-                    colors = [rainbow_colors[i % len(rainbow_colors)] for i in range(len(sorted_preds))]
+                    green_yellow_colors = ['#66bb6a', '#8bc34a', '#a5d6a7', '#ffd54f', '#ffe082', '#f9a825']
+                    colors = [green_yellow_colors[i % len(green_yellow_colors)] for i in range(len(sorted_preds))]
 
                     fig = go.Figure(data=[
                         go.Bar(
@@ -733,7 +721,7 @@ def main():
         <div style="text-align: center; padding: 1rem 0;">
             <div style="font-size: 3.5rem; animation: bounce 2s ease-in-out infinite;">🧫</div>
             <h3 style="font-weight: 900 !important; color: #000000 !important;">Bacteria AI</h3>
-            <p style="color: #000000 !important; font-weight: 700 !important; font-size: 0.9rem;">Powered by ONNX Runtime</p>
+            <p style="color: #000000 !important; font-weight: 700 !important; font-size: 0.9rem;">🌿 Powered by ONNX Runtime</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -746,7 +734,7 @@ def main():
             <div class="metric-label">Model Accuracy</div>
             <div style="margin-top: 0.5rem;">
                 <span class="badge badge-info">6 Species</span>
-                <span class="badge badge-rainbow">AI Powered</span>
+                <span class="badge badge-green-yellow">🌿 AI Powered</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -772,9 +760,9 @@ def main():
         # History
         if st.session_state.prediction_history:
             st.markdown("### 📜 Recent Predictions")
-            rainbow_emojis = ['🌈', '✨', '🌟', '💫', '⭐']
+            green_yellow_emojis = ['🌿', '🍀', '🌱', '💚', '💛']
             for i, pred in enumerate(st.session_state.prediction_history[-5:]):
-                emoji = rainbow_emojis[i % len(rainbow_emojis)]
+                emoji = green_yellow_emojis[i % len(green_yellow_emojis)]
                 st.markdown(f"""
                 <div class="info-card" style="padding: 0.75rem; margin: 0.25rem 0;">
                     <div style="display: flex; justify-content: space-between; align-items: center; color: #000000 !important;">
@@ -791,14 +779,14 @@ def main():
             <p>📤 Upload a clear image</p>
             <p>🔬 Click Classify</p>
             <p>📊 View detailed analysis</p>
-            <p>🌈 Enjoy the colors!</p>
+            <p>🌿 Green & Yellow theme</p>
         </div>
         """, unsafe_allow_html=True)
 
     # Footer
     st.markdown("""
     <div class="footer">
-        <p style="font-size: 1.1rem; font-weight: 800 !important;">🧫 Bacteria Colony Classifier | Built with ❤️ & 🌈</p>
+        <p style="font-size: 1.1rem; font-weight: 800 !important;">🧫 Bacteria Colony Classifier | Built with ❤️ & 🌿</p>
         <p style="font-size: 0.85rem; font-weight: 600 !important; opacity: 0.8;">For educational and research purposes only</p>
     </div>
     """, unsafe_allow_html=True)
