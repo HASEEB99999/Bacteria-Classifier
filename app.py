@@ -1,7 +1,7 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-import onnxruntime as ort
+import tensorflow as tf
 import json
 import plotly.graph_objects as go
 import time
@@ -16,7 +16,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ============ CUSTOM CSS (Same as before) ============
+# ============ CUSTOM CSS ============
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -242,8 +242,6 @@ add_particles()
 # ============ SESSION STATE ============
 if 'prediction_history' not in st.session_state:
     st.session_state.prediction_history = []
-if 'debug_mode' not in st.session_state:
-    st.session_state.debug_mode = False
 
 # ============ CLASS NAMES ============
 class_names = [
@@ -255,51 +253,34 @@ class_names = [
     "Streptococcus_agalactiae"
 ]
 
-# ============ LOAD ONNX MODEL ============
+# ============ LOAD TFLITE MODEL ============
 @st.cache_resource
-def load_onnx_model():
+def load_tflite_model():
     try:
-        if not os.path.exists('bacteria_classifier.onnx'):
-            st.error("❌ bacteria_classifier.onnx file not found!")
+        if not os.path.exists('bacteria_classifier.tflite'):
+            st.error("❌ bacteria_classifier.tflite file not found!")
             return None, None
         
-        session = ort.InferenceSession('bacteria_classifier.onnx')
-        
-        # Debug model info
-        st.sidebar.markdown("### 🔍 Model Info")
-        st.sidebar.write(f"**Inputs:** {len(session.get_inputs())}")
-        for inp in session.get_inputs():
-            st.sidebar.write(f"- {inp.name}: {inp.shape}")
-        st.sidebar.write(f"**Outputs:** {len(session.get_outputs())}")
-        for out in session.get_outputs():
-            st.sidebar.write(f"- {out.name}: {out.shape}")
-        
-        return session, class_names
+        interpreter = tf.lite.Interpreter(model_path='bacteria_classifier.tflite')
+        interpreter.allocate_tensors()
+        return interpreter, class_names
     except Exception as e:
         st.error(f"❌ Error loading model: {e}")
         return None, None
 
 # ============ PREDICTION FUNCTION ============
-def predict_image(image, session, class_names, debug=False):
-    # Preprocess
+def predict_image(image, interpreter, class_names):
     img = image.resize((224, 224))
     img_array = np.array(img).astype(np.float32) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
     
-    if debug:
-        st.write("### 🔍 Debug Info")
-        st.write(f"Image size: {img.size}")
-        st.write(f"Array shape: {img_array.shape}")
-        st.write(f"Array min: {img_array.min():.4f}, max: {img_array.max():.4f}")
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
     
-    # Run inference
-    input_name = session.get_inputs()[0].name
-    output_name = session.get_outputs()[0].name
-    predictions = session.run([output_name], {input_name: img_array})[0]
+    interpreter.set_tensor(input_details[0]['index'], img_array)
+    interpreter.invoke()
     
-    if debug:
-        st.write(f"Raw predictions: {predictions[0]}")
-        st.write(f"Predictions sum: {predictions[0].sum():.4f}")
+    predictions = interpreter.get_tensor(output_details[0]['index'])
     
     predicted_class = np.argmax(predictions[0])
     confidence = np.max(predictions[0]) * 100
@@ -391,10 +372,10 @@ def main():
         </div>
     """, unsafe_allow_html=True)
 
-    session, class_names = load_onnx_model()
+    interpreter, class_names = load_tflite_model()
 
-    if session is None:
-        st.warning("⚠️ Please make sure 'bacteria_classifier.onnx' is in the app directory.")
+    if interpreter is None:
+        st.warning("⚠️ Please make sure 'bacteria_classifier.tflite' is in the app directory.")
         return
 
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -421,16 +402,11 @@ def main():
             st.image(image, caption="📸 Uploaded Image", use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-            # Debug toggle
-            debug_mode = st.checkbox("🔍 Enable Debug Mode", value=False)
-
             if st.button("🔬 Classify Bacteria 🧫", use_container_width=True):
                 with st.spinner("🔍 Analyzing colony morphology..."):
                     time.sleep(0.5)
-                    
-                    # Predict with debug if enabled
                     predicted, confidence, all_predictions = predict_image(
-                        image, session, class_names, debug=debug_mode
+                        image, interpreter, class_names
                     )
 
                     if confidence > 70:
@@ -556,7 +532,7 @@ def main():
         <div style="text-align: center; padding: 1rem 0;">
             <div style="font-size: 3.5rem; animation: bounce 2s ease-in-out infinite;">🧫</div>
             <h3 style="font-weight: 900 !important; color: #000000 !important;">Bacteria AI</h3>
-            <p style="color: #000000 !important; font-weight: 700 !important; font-size: 0.9rem;">🌿 Powered by ONNX</p>
+            <p style="color: #000000 !important; font-weight: 700 !important; font-size: 0.9rem;">🌿 Powered by TFLite</p>
         </div>
         """, unsafe_allow_html=True)
 
