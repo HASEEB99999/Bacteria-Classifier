@@ -16,27 +16,22 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ============ CUSTOM CSS ============
+# ============ CUSTOM CSS (Same as before) ============
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
 * { font-family: 'Inter', sans-serif; }
-
 .stApp {
     background: linear-gradient(135deg, #d4edda 0%, #fff3cd 25%, #d4edda 50%, #fff3cd 75%, #d4edda 100%);
     background-size: 400% 400%;
     animation: softGradient 15s ease infinite;
 }
-
 @keyframes softGradient {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
 }
-
 .stMarkdown, .stText, p, li, label { color: #000000 !important; font-weight: 700 !important; }
-
 .glass-card {
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(20px);
@@ -46,12 +41,10 @@ st.markdown("""
     padding: 2rem;
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .glass-card:hover {
     transform: translateY(-8px) scale(1.01);
     box-shadow: 0 20px 60px rgba(139, 195, 74, 0.35);
 }
-
 .main-title {
     text-align: center;
     font-size: 4.2rem;
@@ -60,7 +53,6 @@ st.markdown("""
     text-shadow: 0 4px 20px rgba(139, 195, 74, 0.2);
     padding: 1rem 0;
 }
-
 .main-title .green-yellow-text {
     background: linear-gradient(90deg, #558b2f, #f9a825, #558b2f);
     background-size: 300% 300%;
@@ -68,13 +60,11 @@ st.markdown("""
     -webkit-text-fill-color: transparent;
     animation: greenYellowText 4s ease infinite;
 }
-
 @keyframes greenYellowText {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
 }
-
 .upload-area {
     border: 3px dashed #8bc34a;
     border-radius: 24px;
@@ -85,25 +75,21 @@ st.markdown("""
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
 }
-
 .upload-area:hover {
     transform: scale(1.03);
     background: rgba(255, 255, 255, 0.9);
     border-color: #558b2f;
 }
-
 .upload-icon {
     font-size: 5rem;
     margin-bottom: 1rem;
     display: block;
     animation: bounce 2s ease-in-out infinite;
 }
-
 @keyframes bounce {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-15px); }
 }
-
 .prediction-box {
     background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(20px);
@@ -114,23 +100,19 @@ st.markdown("""
     box-shadow: 0 8px 32px rgba(139, 195, 74, 0.25);
     animation: fadeInUp 0.6s ease;
 }
-
 @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(30px) scale(0.95); }
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
-
 .prediction-box h2 {
     font-size: 3rem;
     font-weight: 900 !important;
     color: #000000 !important;
     margin: 0.5rem 0;
 }
-
 .confidence-high { color: #2e7d32 !important; font-weight: 900 !important; font-size: 2.2rem; }
 .confidence-medium { color: #f9a825 !important; font-weight: 900 !important; font-size: 2.2rem; }
 .confidence-low { color: #c62828 !important; font-weight: 900 !important; font-size: 2.2rem; }
-
 .badge {
     display: inline-block;
     padding: 0.5rem 1.5rem;
@@ -141,29 +123,24 @@ st.markdown("""
     color: #000000 !important;
     border: 2px solid #000000;
 }
-
 .badge-success {
     background: linear-gradient(135deg, #a5d6a7, #66bb6a);
     box-shadow: 0 4px 20px rgba(102, 187, 106, 0.3);
 }
-
 .badge-warning {
     background: linear-gradient(135deg, #ffe082, #ffd54f);
     box-shadow: 0 4px 20px rgba(255, 213, 79, 0.3);
 }
-
 .badge-danger {
     background: linear-gradient(135deg, #ef9a9a, #ef5350);
     box-shadow: 0 4px 20px rgba(239, 83, 80, 0.3);
 }
-
 .badge-green-yellow {
     background: linear-gradient(90deg, #a5d6a7, #ffe082, #a5d6a7);
     background-size: 300% 300%;
     animation: greenYellowText 3s ease infinite;
     border-color: #000000;
 }
-
 .stButton > button {
     background: linear-gradient(90deg, #66bb6a, #ffd54f, #66bb6a) !important;
     background-size: 300% 300% !important;
@@ -177,12 +154,10 @@ st.markdown("""
     box-shadow: 0 4px 30px rgba(102, 187, 106, 0.3) !important;
     width: 100% !important;
 }
-
 .stButton > button:hover {
     transform: translateY(-5px) scale(1.02) !important;
     box-shadow: 0 10px 50px rgba(102, 187, 106, 0.4) !important;
 }
-
 .stProgress > div > div {
     background: linear-gradient(90deg, #66bb6a, #ffd54f, #66bb6a) !important;
     background-size: 300% 300% !important;
@@ -191,7 +166,6 @@ st.markdown("""
     height: 14px !important;
     border: 2px solid #000000 !important;
 }
-
 .info-card {
     background: rgba(255, 255, 255, 0.85);
     border-radius: 16px;
@@ -200,16 +174,13 @@ st.markdown("""
     margin: 0.5rem 0;
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .info-card:hover {
     transform: translateX(8px) scale(1.01);
     background: rgba(255, 255, 255, 0.95);
 }
-
 .info-card h4 { color: #000000 !important; font-weight: 800 !important; }
 .info-card p { color: #000000 !important; font-weight: 600 !important; }
 .info-card strong { color: #000000 !important; font-weight: 900 !important; }
-
 .footer {
     text-align: center;
     padding: 2rem 0;
@@ -271,8 +242,10 @@ add_particles()
 # ============ SESSION STATE ============
 if 'prediction_history' not in st.session_state:
     st.session_state.prediction_history = []
+if 'debug_mode' not in st.session_state:
+    st.session_state.debug_mode = False
 
-# ============ CLASS NAMES (HARDCODED - NO FILE NEEDED!) ============
+# ============ CLASS NAMES ============
 class_names = [
     "Staphylococcus_aureus",
     "Staphylococcus_saprophyticus",
@@ -286,26 +259,47 @@ class_names = [
 @st.cache_resource
 def load_onnx_model():
     try:
-        # Check if ONNX file exists
         if not os.path.exists('bacteria_classifier.onnx'):
             st.error("❌ bacteria_classifier.onnx file not found!")
             return None, None
         
         session = ort.InferenceSession('bacteria_classifier.onnx')
+        
+        # Debug model info
+        st.sidebar.markdown("### 🔍 Model Info")
+        st.sidebar.write(f"**Inputs:** {len(session.get_inputs())}")
+        for inp in session.get_inputs():
+            st.sidebar.write(f"- {inp.name}: {inp.shape}")
+        st.sidebar.write(f"**Outputs:** {len(session.get_outputs())}")
+        for out in session.get_outputs():
+            st.sidebar.write(f"- {out.name}: {out.shape}")
+        
         return session, class_names
     except Exception as e:
         st.error(f"❌ Error loading model: {e}")
         return None, None
 
 # ============ PREDICTION FUNCTION ============
-def predict_image(image, session, class_names):
+def predict_image(image, session, class_names, debug=False):
+    # Preprocess
     img = image.resize((224, 224))
     img_array = np.array(img).astype(np.float32) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
     
+    if debug:
+        st.write("### 🔍 Debug Info")
+        st.write(f"Image size: {img.size}")
+        st.write(f"Array shape: {img_array.shape}")
+        st.write(f"Array min: {img_array.min():.4f}, max: {img_array.max():.4f}")
+    
+    # Run inference
     input_name = session.get_inputs()[0].name
     output_name = session.get_outputs()[0].name
     predictions = session.run([output_name], {input_name: img_array})[0]
+    
+    if debug:
+        st.write(f"Raw predictions: {predictions[0]}")
+        st.write(f"Predictions sum: {predictions[0].sum():.4f}")
     
     predicted_class = np.argmax(predictions[0])
     confidence = np.max(predictions[0]) * 100
@@ -427,11 +421,16 @@ def main():
             st.image(image, caption="📸 Uploaded Image", use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
+            # Debug toggle
+            debug_mode = st.checkbox("🔍 Enable Debug Mode", value=False)
+
             if st.button("🔬 Classify Bacteria 🧫", use_container_width=True):
                 with st.spinner("🔍 Analyzing colony morphology..."):
                     time.sleep(0.5)
+                    
+                    # Predict with debug if enabled
                     predicted, confidence, all_predictions = predict_image(
-                        image, session, class_names
+                        image, session, class_names, debug=debug_mode
                     )
 
                     if confidence > 70:
