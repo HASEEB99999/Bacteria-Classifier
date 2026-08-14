@@ -6,6 +6,7 @@ import json
 import plotly.graph_objects as go
 import time
 import random
+import os
 
 # ============ PAGE CONFIG ============
 st.set_page_config(
@@ -271,13 +272,26 @@ add_particles()
 if 'prediction_history' not in st.session_state:
     st.session_state.prediction_history = []
 
+# ============ CLASS NAMES (HARDCODED - NO FILE NEEDED!) ============
+class_names = [
+    "Staphylococcus_aureus",
+    "Staphylococcus_saprophyticus",
+    "Staphylococcus_epidermidis",
+    "Streptococcus_pneumoniae",
+    "Streptococcus_pyogenes",
+    "Streptococcus_agalactiae"
+]
+
 # ============ LOAD ONNX MODEL ============
 @st.cache_resource
 def load_onnx_model():
     try:
+        # Check if ONNX file exists
+        if not os.path.exists('bacteria_classifier.onnx'):
+            st.error("❌ bacteria_classifier.onnx file not found!")
+            return None, None
+        
         session = ort.InferenceSession('bacteria_classifier.onnx')
-        with open('class_names.json', 'r') as f:
-            class_names = json.load(f)
         return session, class_names
     except Exception as e:
         st.error(f"❌ Error loading model: {e}")
@@ -386,7 +400,7 @@ def main():
     session, class_names = load_onnx_model()
 
     if session is None:
-        st.warning("⚠️ Please make sure 'bacteria_classifier.onnx' and 'class_names.json' are in the same directory.")
+        st.warning("⚠️ Please make sure 'bacteria_classifier.onnx' is in the app directory.")
         return
 
     col1, col2, col3 = st.columns([1, 2, 1])
