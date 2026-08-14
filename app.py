@@ -1,7 +1,7 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-import onnxruntime as ort
+import tensorflow as tf
 import json
 import plotly.graph_objects as go
 import time
@@ -271,27 +271,32 @@ add_particles()
 if 'prediction_history' not in st.session_state:
     st.session_state.prediction_history = []
 
-# ============ LOAD ONNX MODEL ============
+# ============ LOAD TFLITE MODEL ============
 @st.cache_resource
-def load_onnx_model():
+def load_tflite_model():
     try:
-        session = ort.InferenceSession('bacteria_classifier.onnx')
+        interpreter = tf.lite.Interpreter(model_path='bacteria_classifier.tflite')
+        interpreter.allocate_tensors()
         with open('class_names.json', 'r') as f:
             class_names = json.load(f)
-        return session, class_names
+        return interpreter, class_names
     except Exception as e:
         st.error(f"❌ Error loading model: {e}")
         return None, None
 
 # ============ PREDICTION FUNCTION ============
-def predict_image(image, session, class_names):
+def predict_image(image, interpreter, class_names):
     img = image.resize((224, 224))
     img_array = np.array(img).astype(np.float32) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
     
-    input_name = session.get_inputs()[0].name
-    output_name = session.get_outputs()[0].name
-    predictions = session.run([output_name], {input_name: img_array})[0]
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    
+    interpreter.set_tensor(input_details[0]['index'], img_array)
+    interpreter.invoke()
+    
+    predictions = interpreter.get_tensor(output_details[0]['index'])
     
     predicted_class = np.argmax(predictions[0])
     confidence = np.max(predictions[0]) * 100
@@ -384,10 +389,10 @@ def main():
         </div>
     """, unsafe_allow_html=True)
 
-    session, class_names = load_onnx_model()
+    interpreter, class_names = load_tflite_model()
 
-    if session is None:
-        st.warning("⚠️ Please make sure 'bacteria_classifier.onnx' and 'class_names.json' are in the same directory.")
+    if interpreter is None:
+        st.warning("⚠️ Please make sure 'bacteria_classifier.tflite' and 'class_names.json' are in the same directory.")
         return
 
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -418,7 +423,7 @@ def main():
                 with st.spinner("🔍 Analyzing colony morphology..."):
                     time.sleep(0.5)
                     predicted, confidence, all_predictions = predict_image(
-                        image, session, class_names
+                        image, interpreter, class_names
                     )
 
                     if confidence > 70:
@@ -544,7 +549,7 @@ def main():
         <div style="text-align: center; padding: 1rem 0;">
             <div style="font-size: 3.5rem; animation: bounce 2s ease-in-out infinite;">🧫</div>
             <h3 style="font-weight: 900 !important; color: #000000 !important;">Bacteria AI</h3>
-            <p style="color: #000000 !important; font-weight: 700 !important; font-size: 0.9rem;">🌿 Powered by ONNX</p>
+            <p style="color: #000000 !important; font-weight: 700 !important; font-size: 0.9rem;">🌿 Powered by TFLite</p>
         </div>
         """, unsafe_allow_html=True)
 
