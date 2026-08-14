@@ -1,8 +1,7 @@
-
 import streamlit as st
 import numpy as np
 from PIL import Image
-import onnxruntime as ort
+import tensorflow as tf
 import json
 import plotly.graph_objects as go
 import time
@@ -23,7 +22,6 @@ st.markdown("""
 
 * { font-family: 'Inter', sans-serif; }
 
-/* Light Green & Yellow Animated Background */
 .stApp {
     background: linear-gradient(135deg, #d4edda 0%, #fff3cd 25%, #d4edda 50%, #fff3cd 75%, #d4edda 100%);
     background-size: 400% 400%;
@@ -36,10 +34,8 @@ st.markdown("""
     100% { background-position: 0% 50%; }
 }
 
-/* Bold Black Text */
 .stMarkdown, .stText, p, li, label { color: #000000 !important; font-weight: 700 !important; }
 
-/* Glassmorphism Cards */
 .glass-card {
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(20px);
@@ -55,7 +51,6 @@ st.markdown("""
     box-shadow: 0 20px 60px rgba(139, 195, 74, 0.35);
 }
 
-/* Main Title */
 .main-title {
     text-align: center;
     font-size: 4.2rem;
@@ -79,7 +74,6 @@ st.markdown("""
     100% { background-position: 0% 50%; }
 }
 
-/* Upload Area */
 .upload-area {
     border: 3px dashed #8bc34a;
     border-radius: 24px;
@@ -109,7 +103,6 @@ st.markdown("""
     50% { transform: translateY(-15px); }
 }
 
-/* Prediction Box */
 .prediction-box {
     background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(20px);
@@ -133,12 +126,10 @@ st.markdown("""
     margin: 0.5rem 0;
 }
 
-/* Confidence Colors */
 .confidence-high { color: #2e7d32 !important; font-weight: 900 !important; font-size: 2.2rem; }
 .confidence-medium { color: #f9a825 !important; font-weight: 900 !important; font-size: 2.2rem; }
 .confidence-low { color: #c62828 !important; font-weight: 900 !important; font-size: 2.2rem; }
 
-/* Badges */
 .badge {
     display: inline-block;
     padding: 0.5rem 1.5rem;
@@ -172,7 +163,6 @@ st.markdown("""
     border-color: #000000;
 }
 
-/* Button */
 .stButton > button {
     background: linear-gradient(90deg, #66bb6a, #ffd54f, #66bb6a) !important;
     background-size: 300% 300% !important;
@@ -192,7 +182,6 @@ st.markdown("""
     box-shadow: 0 10px 50px rgba(102, 187, 106, 0.4) !important;
 }
 
-/* Progress Bar */
 .stProgress > div > div {
     background: linear-gradient(90deg, #66bb6a, #ffd54f, #66bb6a) !important;
     background-size: 300% 300% !important;
@@ -202,7 +191,6 @@ st.markdown("""
     border: 2px solid #000000 !important;
 }
 
-/* Info Cards */
 .info-card {
     background: rgba(255, 255, 255, 0.85);
     border-radius: 16px;
@@ -221,7 +209,6 @@ st.markdown("""
 .info-card p { color: #000000 !important; font-weight: 600 !important; }
 .info-card strong { color: #000000 !important; font-weight: 900 !important; }
 
-/* Footer */
 .footer {
     text-align: center;
     padding: 2rem 0;
@@ -284,41 +271,25 @@ add_particles()
 if 'prediction_history' not in st.session_state:
     st.session_state.prediction_history = []
 
-# ============ LOAD MODEL ============
+# ============ LOAD KERAS MODEL ============
 @st.cache_resource
-def load_onnx_model():
+def load_keras_model():
     try:
-        session = ort.InferenceSession('bacteria_classifier.onnx')
+        model = tf.keras.models.load_model('bacteria_classifier.keras')
         with open('class_names.json', 'r') as f:
             class_names = json.load(f)
-        return session, class_names
+        return model, class_names
     except Exception as e:
         st.error(f"❌ Error loading model: {e}")
         return None, None
 
-# ============ CONVERT KERAS TO ONNX (Run once in Colab) ============
-# If you have the keras model, convert it in Colab:
-"""
-import tensorflow as tf
-import tf2onnx
-
-model = tf.keras.models.load_model('bacteria_classifier.keras')
-spec = (tf.TensorSpec((1, 224, 224, 3), tf.float32, name="input"),)
-model_proto, _ = tf2onnx.convert.from_keras(model, input_signature=spec, opset=13)
-with open("bacteria_classifier.onnx", "wb") as f:
-    f.write(model_proto.SerializeToString())
-print("✅ ONNX model saved!")
-"""
-
-def predict_image(image, session, class_names):
+# ============ PREDICTION FUNCTION ============
+def predict_image(image, model, class_names):
     img = image.resize((224, 224))
     img_array = np.array(img).astype(np.float32) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
     
-    input_name = session.get_inputs()[0].name
-    output_name = session.get_outputs()[0].name
-    predictions = session.run([output_name], {input_name: img_array})[0]
-    
+    predictions = model.predict(img_array, verbose=0)
     predicted_class = np.argmax(predictions[0])
     confidence = np.max(predictions[0]) * 100
     
@@ -410,17 +381,15 @@ def main():
         </div>
     """, unsafe_allow_html=True)
 
-    session, class_names = load_onnx_model()
+    model, class_names = load_keras_model()
 
-    if session is None:
-        st.warning("⚠️ Please make sure 'bacteria_classifier.onnx' and 'class_names.json' are in the same directory.")
+    if model is None:
+        st.warning("⚠️ Please make sure 'bacteria_classifier.keras' and 'class_names.json' are in the same directory.")
         return
 
-    # Layout
     col1, col2, col3 = st.columns([1, 2, 1])
 
     with col2:
-        # Upload Section
         st.markdown("""
         <div class="upload-area">
             <span class="upload-icon">📸</span>
@@ -438,20 +407,17 @@ def main():
         if uploaded_file is not None:
             image = Image.open(uploaded_file)
 
-            # Display image
             st.markdown('<div class="glass-card">', unsafe_allow_html=True)
             st.image(image, caption="📸 Uploaded Image", use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-            # Classify Button
             if st.button("🔬 Classify Bacteria 🧫", use_container_width=True):
                 with st.spinner("🔍 Analyzing colony morphology..."):
                     time.sleep(0.5)
                     predicted, confidence, all_predictions = predict_image(
-                        image, session, class_names
+                        image, model, class_names
                     )
 
-                    # Determine confidence level
                     if confidence > 70:
                         conf_level = "High"
                         conf_emoji = "✅"
@@ -468,14 +434,12 @@ def main():
                         conf_color = "confidence-low"
                         badge = "badge-danger"
 
-                    # Store in history
                     st.session_state.prediction_history.append({
                         'predicted': predicted,
                         'confidence': confidence,
                         'timestamp': time.time()
                     })
 
-                    # Prediction Box
                     info = get_bacteria_info(predicted)
 
                     st.markdown(f"""
@@ -498,10 +462,8 @@ def main():
                     </div>
                     """, unsafe_allow_html=True)
 
-                    # Confidence Bar
                     st.progress(int(confidence))
 
-                    # Morphology Info
                     if info:
                         with st.expander("📊 Morphology & Clinical Characteristics", expanded=True):
                             tab1, tab2, tab3 = st.tabs(["🔬 Morphology", "🦠 Clinical", "💊 Treatment"])
@@ -534,9 +496,7 @@ def main():
                                 </div>
                                 """, unsafe_allow_html=True)
 
-                    # Confidence Chart
                     st.markdown("### 📈 Confidence Scores")
-
                     sorted_preds = dict(sorted(all_predictions.items(), key=lambda x: x[1], reverse=True))
 
                     green_yellow_colors = ['#66bb6a', '#8bc34a', '#a5d6a7', '#ffd54f', '#ffe082', '#f9a825']
@@ -576,19 +536,17 @@ def main():
 
                     st.plotly_chart(fig, use_container_width=True)
 
-    # Sidebar
     with st.sidebar:
         st.markdown("""
         <div style="text-align: center; padding: 1rem 0;">
             <div style="font-size: 3.5rem; animation: bounce 2s ease-in-out infinite;">🧫</div>
             <h3 style="font-weight: 900 !important; color: #000000 !important;">Bacteria AI</h3>
-            <p style="color: #000000 !important; font-weight: 700 !important; font-size: 0.9rem;">🌿 Powered by ONNX Runtime</p>
+            <p style="color: #000000 !important; font-weight: 700 !important; font-size: 0.9rem;">🌿 Powered by TensorFlow</p>
         </div>
         """, unsafe_allow_html=True)
 
         st.divider()
 
-        # Model Performance
         st.markdown("""
         <div style="text-align: center;">
             <div class="metric-value">82%</div>
@@ -601,8 +559,6 @@ def main():
         """, unsafe_allow_html=True)
 
         st.divider()
-
-        # Available Species
         st.markdown("### 🦠 Available Species")
         for species in class_names:
             display_name = species.replace('_', ' ')
@@ -618,7 +574,6 @@ def main():
 
         st.divider()
 
-        # History
         if st.session_state.prediction_history:
             st.markdown("### 📜 Recent Predictions")
             green_yellow_emojis = ['🌿', '🍀', '🌱', '💚', '💛']
@@ -633,7 +588,6 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
 
-        # Instructions
         st.divider()
         st.markdown("""
         <div style="font-size: 0.9rem; color: #000000 !important; font-weight: 700 !important;">
@@ -644,7 +598,6 @@ def main():
         </div>
         """, unsafe_allow_html=True)
 
-    # Footer
     st.markdown("""
     <div class="footer">
         <p style="font-size: 1.1rem; font-weight: 800 !important;">🧫 Bacteria Colony Classifier | Built with ❤️ & 🌿</p>
@@ -654,21 +607,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-   
- 
-  
-   
-
-   
-
-
-
-  
-  
-  
-    
- 
-  
 
 
   
