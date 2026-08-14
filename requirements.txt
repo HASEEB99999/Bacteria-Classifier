@@ -1,5 +1,5 @@
-streamlit==1.28.0
-onnxruntime
+streamlit
+tensorflow
 numpy
 pillow
 plotly
