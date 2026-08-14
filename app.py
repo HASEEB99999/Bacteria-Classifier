@@ -2,13 +2,11 @@ import streamlit as st
 import numpy as np
 from PIL import Image
 import onnxruntime as ort
-import os
 import plotly.graph_objects as go
+import os
 
 st.set_page_config(page_title="🧫 Bacteria Classifier", layout="wide")
 
-# ============ CORRECT CLASS NAMES ============
-# These must match the EXACT order your model was trained on
 class_names = [
     "Staphylococcus_aureus",
     "Staphylococcus_saprophyticus",
@@ -18,7 +16,6 @@ class_names = [
     "Streptococcus_agalactiae"
 ]
 
-# ============ DISPLAY NAMES (for UI) ============
 display_names = {
     "Staphylococcus_aureus": "Staphylococcus aureus",
     "Staphylococcus_saprophyticus": "Staphylococcus saprophyticus",
@@ -28,13 +25,16 @@ display_names = {
     "Streptococcus_agalactiae": "Streptococcus agalactiae"
 }
 
-# ============ LOAD MODEL ============
 @st.cache_resource
 def load_onnx_model():
     try:
+        if not os.path.exists('bacteria_classifier.onnx'):
+            st.error("❌ bacteria_classifier.onnx file not found!")
+            return None
+        
         session = ort.InferenceSession('bacteria_classifier.onnx')
         
-        # Debug info
+        # Get input/output details
         st.sidebar.markdown("### 🔍 Model Info")
         for inp in session.get_inputs():
             st.sidebar.write(f"Input: {inp.name}, Shape: {inp.shape}")
@@ -43,28 +43,47 @@ def load_onnx_model():
         
         return session
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"❌ Error loading model: {e}")
         return None
 
-# ============ PREDICTION ============
-def predict_image(image, session):
+def predict_image(image, session, method="normal"):
+    """
+    Predict with different preprocessing methods
+    method: "normal", "no_norm", "neg1_to_1", "bgr", "bgr_no_norm"
+    """
     img = image.resize((224, 224))
     
-    # Try BGR (most common for ONNX)
-    img_array = np.array(img).astype(np.float32)
-    img_array = img_array[:, :, ::-1]  # RGB to BGR
-    img_array = np.expand_dims(img_array, axis=0)
+    if method == "normal":
+        # Standard: 0-1 normalization
+        arr = np.array(img).astype(np.float32) / 255.0
+    elif method == "no_norm":
+        # No normalization (0-255)
+        arr = np.array(img).astype(np.float32)
+    elif method == "neg1_to_1":
+        # -1 to 1 normalization
+        arr = np.array(img).astype(np.float32) / 127.5 - 1.0
+    elif method == "bgr":
+        # BGR with 0-1 normalization
+        arr = np.array(img).astype(np.float32)[:, :, ::-1] / 255.0
+    elif method == "bgr_no_norm":
+        # BGR without normalization
+        arr = np.array(img).astype(np.float32)[:, :, ::-1]
+    else:
+        arr = np.array(img).astype(np.float32) / 255.0
+    
+    arr = np.expand_dims(arr, axis=0)
     
     input_name = session.get_inputs()[0].name
     output_name = session.get_outputs()[0].name
-    predictions = session.run([output_name], {input_name: img_array})[0]
     
-    predicted_class = np.argmax(predictions[0])
-    confidence = np.max(predictions[0]) * 100
-    
-    all_predictions = {class_names[i]: predictions[0][i] * 100 for i in range(len(class_names))}
-    
-    return class_names[predicted_class], confidence, all_predictions
+    try:
+        predictions = session.run([output_name], {input_name: arr})[0]
+        idx = np.argmax(predictions[0])
+        confidence = predictions[0][idx] * 100
+        all_preds = {class_names[i]: predictions[0][i] * 100 for i in range(len(class_names))}
+        return class_names[idx], confidence, all_preds
+    except Exception as e:
+        return f"Error: {e}", 0, {}
 
 # ============ UI ============
 st.markdown("""
@@ -84,40 +103,64 @@ if uploaded:
     image = Image.open(uploaded)
     st.image(image, caption="Uploaded Image", use_container_width=True)
     
+    # Method selector
+    method = st.selectbox(
+        "Select Preprocessing Method",
+        [
+            "normal (0-1)",
+            "no_norm (0-255)",
+            "neg1_to_1 (-1 to 1)",
+            "bgr (BGR 0-1)",
+            "bgr_no_norm (BGR 0-255)"
+        ]
+    )
+    
+    method_map = {
+        "normal (0-1)": "normal",
+        "no_norm (0-255)": "no_norm",
+        "neg1_to_1 (-1 to 1)": "neg1_to_1",
+        "bgr (BGR 0-1)": "bgr",
+        "bgr_no_norm (BGR 0-255)": "bgr_no_norm"
+    }
+    
     if st.button("🔬 Classify", use_container_width=True):
         with st.spinner("Analyzing..."):
-            predicted, confidence, all_predictions = predict_image(image, session)
+            predicted, confidence, all_preds = predict_image(
+                image, session, method_map[method]
+            )
             
-            # Get display name
-            display_name = display_names.get(predicted, predicted.replace('_', ' '))
-            
-            color = "#2e7d32" if confidence > 70 else "#f9a825" if confidence > 50 else "#c62828"
-            
-            st.markdown(f"""
-                <div style='background:white; padding:2rem; border-radius:15px; border:3px solid #8bc34a; text-align:center;'>
-                    <h2>{display_name}</h2>
-                    <p style='font-size:2rem; font-weight:bold; color:{color};'>{confidence:.1f}%</p>
-                    <span style='background:{color}; color:white; padding:0.3rem 1.5rem; border-radius:50px;'>
-                        {'✅ High' if confidence > 70 else '⚠️ Medium' if confidence > 50 else '❌ Low'} Confidence
-                    </span>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # Show all scores
-            st.markdown("### 📊 All Confidence Scores")
-            sorted_preds = dict(sorted(all_predictions.items(), key=lambda x: x[1], reverse=True))
-            
-            # Use display names
-            display_preds = {display_names.get(k, k.replace('_', ' ')): v for k, v in sorted_preds.items()}
-            
-            fig = go.Figure(data=[
-                go.Bar(
-                    x=list(display_preds.keys()),
-                    y=list(display_preds.values()),
-                    marker_color=['#2e7d32' if i==0 else '#bdbdbd' for i in range(len(display_preds))],
-                    text=[f"{v:.1f}%" for v in display_preds.values()],
-                    textposition='outside'
-                )
-            ])
-            fig.update_layout(height=400, xaxis_tickangle=-45, showlegend=False, yaxis_range=[0, 100])
-            st.plotly_chart(fig, use_container_width=True)
+            if isinstance(predicted, str) and predicted.startswith("Error"):
+                st.error(predicted)
+            else:
+                display_name = display_names.get(predicted, predicted.replace('_', ' '))
+                
+                color = "#2e7d32" if confidence > 70 else "#f9a825" if confidence > 50 else "#c62828"
+                
+                st.markdown(f"""
+                    <div style='background:white; padding:2rem; border-radius:15px; border:3px solid #8bc34a; text-align:center;'>
+                        <h2>{display_name}</h2>
+                        <p style='font-size:2rem; font-weight:bold; color:{color};'>{confidence:.1f}%</p>
+                        <span style='background:{color}; color:white; padding:0.3rem 1.5rem; border-radius:50px;'>
+                            {'✅ High' if confidence > 70 else '⚠️ Medium' if confidence > 50 else '❌ Low'} Confidence
+                        </span>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                # Show all scores
+                st.markdown("### 📊 All Confidence Scores")
+                sorted_preds = dict(sorted(all_preds.items(), key=lambda x: x[1], reverse=True))
+                
+                # Use display names
+                display_preds = {display_names.get(k, k.replace('_', ' ')): v for k, v in sorted_preds.items()}
+                
+                fig = go.Figure(data=[
+                    go.Bar(
+                        x=list(display_preds.keys()),
+                        y=list(display_preds.values()),
+                        marker_color=['#2e7d32' if i==0 else '#bdbdbd' for i in range(len(display_preds))],
+                        text=[f"{v:.1f}%" for v in display_preds.values()],
+                        textposition='outside'
+                    )
+                ])
+                fig.update_layout(height=400, xaxis_tickangle=-45, showlegend=False, yaxis_range=[0, 100])
+                st.plotly_chart(fig, use_container_width=True)
