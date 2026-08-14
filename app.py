@@ -378,7 +378,6 @@ def get_bacteria_info(bacteria_name):
 
 # ============ MAIN APP ============
 def main():
-    # Header
     st.markdown("""
         <div style="text-align: center; padding: 0.5rem 0;">
             <div style="font-size: 5rem; margin-bottom: -1.5rem; animation: bounce 2s ease-in-out infinite;">🧫</div>
