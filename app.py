@@ -1,4 +1,4 @@
-# ============ PART 5: APP.PY (Copy this to GitHub) ============
+
 import streamlit as st
 import numpy as np
 from PIL import Image
