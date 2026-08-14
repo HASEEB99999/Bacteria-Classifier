@@ -1,3 +1,4 @@
+# ============ PART 5: APP.PY (Copy this to GitHub) ============
 import streamlit as st
 import numpy as np
 from PIL import Image
@@ -18,12 +19,9 @@ st.set_page_config(
 # ============ CUSTOM CSS ============
 st.markdown("""
 <style>
-/* Google Font */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-* {
-    font-family: 'Inter', sans-serif;
-}
+* { font-family: 'Inter', sans-serif; }
 
 /* Light Green & Yellow Animated Background */
 .stApp {
@@ -38,53 +36,18 @@ st.markdown("""
     100% { background-position: 0% 50%; }
 }
 
-/* Particle Styles - Hidden by default but animated */
-.particle {
-    position: fixed;
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 0;
-    animation: floatUp linear infinite;
-    opacity: 0.12;
-}
+/* Bold Black Text */
+.stMarkdown, .stText, p, li, label { color: #000000 !important; font-weight: 700 !important; }
 
-@keyframes floatUp {
-    0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-    10% { opacity: 0.12; }
-    90% { opacity: 0.12; }
-    100% { transform: translateY(-10vh) rotate(720deg); opacity: 0; }
-}
-
-/* Hide particles container from being visible as text */
-.particle-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 0;
-    overflow: hidden;
-}
-
-/* Bold Black Text Base */
-.stMarkdown, .stText, p, li, label {
-    color: #000000 !important;
-    font-weight: 700 !important;
-}
-
-/* Glassmorphism Cards with Light Border */
+/* Glassmorphism Cards */
 .glass-card {
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
     border-radius: 24px;
     border: 3px solid #8bc34a;
-    background-clip: padding-box;
     box-shadow: 0 8px 32px rgba(139, 195, 74, 0.25);
     padding: 2rem;
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
 }
 
 .glass-card:hover {
@@ -92,7 +55,7 @@ st.markdown("""
     box-shadow: 0 20px 60px rgba(139, 195, 74, 0.35);
 }
 
-/* Main Title - Bold Black */
+/* Main Title */
 .main-title {
     text-align: center;
     font-size: 4.2rem;
@@ -100,7 +63,6 @@ st.markdown("""
     color: #000000 !important;
     text-shadow: 0 4px 20px rgba(139, 195, 74, 0.2);
     padding: 1rem 0;
-    letter-spacing: -0.02em;
 }
 
 .main-title .green-yellow-text {
@@ -108,7 +70,6 @@ st.markdown("""
     background-size: 300% 300%;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    background-clip: text;
     animation: greenYellowText 4s ease infinite;
 }
 
@@ -118,17 +79,7 @@ st.markdown("""
     100% { background-position: 0% 50%; }
 }
 
-/* Subtitle - Bold Black */
-.sub-title {
-    text-align: center;
-    color: #000000 !important;
-    font-size: 1.3rem;
-    font-weight: 700 !important;
-    margin-bottom: 2rem;
-    text-shadow: 0 2px 10px rgba(139, 195, 74, 0.15);
-}
-
-/* Upload Area - Bold Text */
+/* Upload Area */
 .upload-area {
     border: 3px dashed #8bc34a;
     border-radius: 24px;
@@ -146,17 +97,6 @@ st.markdown("""
     border-color: #558b2f;
 }
 
-.upload-area h3 {
-    color: #000000 !important;
-    font-weight: 800 !important;
-}
-
-.upload-area p {
-    color: #000000 !important;
-    font-weight: 600 !important;
-    opacity: 0.8;
-}
-
 .upload-icon {
     font-size: 5rem;
     margin-bottom: 1rem;
@@ -169,7 +109,7 @@ st.markdown("""
     50% { transform: translateY(-15px); }
 }
 
-/* Prediction Box - Bold Black Text */
+/* Prediction Box */
 .prediction-box {
     background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(20px);
@@ -191,37 +131,14 @@ st.markdown("""
     font-weight: 900 !important;
     color: #000000 !important;
     margin: 0.5rem 0;
-    text-shadow: 0 2px 10px rgba(139, 195, 74, 0.15);
 }
 
-.prediction-box p {
-    color: #000000 !important;
-    font-weight: 700 !important;
-}
+/* Confidence Colors */
+.confidence-high { color: #2e7d32 !important; font-weight: 900 !important; font-size: 2.2rem; }
+.confidence-medium { color: #f9a825 !important; font-weight: 900 !important; font-size: 2.2rem; }
+.confidence-low { color: #c62828 !important; font-weight: 900 !important; font-size: 2.2rem; }
 
-/* Confidence Colors with Bold Text */
-.confidence-high { 
-    color: #2e7d32 !important;
-    font-weight: 900 !important;
-    font-size: 2.2rem;
-    -webkit-text-fill-color: #2e7d32 !important;
-}
-
-.confidence-medium { 
-    color: #f9a825 !important;
-    font-weight: 900 !important;
-    font-size: 2.2rem;
-    -webkit-text-fill-color: #f9a825 !important;
-}
-
-.confidence-low { 
-    color: #c62828 !important;
-    font-weight: 900 !important;
-    font-size: 2.2rem;
-    -webkit-text-fill-color: #c62828 !important;
-}
-
-/* Bold Badges - Green & Yellow Theme */
+/* Badges */
 .badge {
     display: inline-block;
     padding: 0.5rem 1.5rem;
@@ -230,44 +147,32 @@ st.markdown("""
     font-size: 0.95rem;
     margin: 0.25rem;
     color: #000000 !important;
-    transition: all 0.3s ease;
     border: 2px solid #000000;
 }
 
 .badge-success {
     background: linear-gradient(135deg, #a5d6a7, #66bb6a);
-    color: #000000 !important;
     box-shadow: 0 4px 20px rgba(102, 187, 106, 0.3);
 }
 
 .badge-warning {
     background: linear-gradient(135deg, #ffe082, #ffd54f);
-    color: #000000 !important;
     box-shadow: 0 4px 20px rgba(255, 213, 79, 0.3);
 }
 
 .badge-danger {
     background: linear-gradient(135deg, #ef9a9a, #ef5350);
-    color: #000000 !important;
     box-shadow: 0 4px 20px rgba(239, 83, 80, 0.3);
-}
-
-.badge-info {
-    background: linear-gradient(135deg, #a5d6a7, #66bb6a);
-    color: #000000 !important;
-    box-shadow: 0 4px 20px rgba(102, 187, 106, 0.3);
 }
 
 .badge-green-yellow {
     background: linear-gradient(90deg, #a5d6a7, #ffe082, #a5d6a7);
     background-size: 300% 300%;
     animation: greenYellowText 3s ease infinite;
-    color: #000000 !important;
-    font-weight: 800 !important;
     border-color: #000000;
 }
 
-/* Vibrant Button - Green & Yellow */
+/* Button */
 .stButton > button {
     background: linear-gradient(90deg, #66bb6a, #ffd54f, #66bb6a) !important;
     background-size: 300% 300% !important;
@@ -278,10 +183,8 @@ st.markdown("""
     padding: 1rem 2.5rem !important;
     border: 3px solid #000000 !important;
     border-radius: 50px !important;
-    transition: all 0.3s ease !important;
     box-shadow: 0 4px 30px rgba(102, 187, 106, 0.3) !important;
     width: 100% !important;
-    letter-spacing: 0.5px !important;
 }
 
 .stButton > button:hover {
@@ -289,11 +192,7 @@ st.markdown("""
     box-shadow: 0 10px 50px rgba(102, 187, 106, 0.4) !important;
 }
 
-.stButton > button:active {
-    transform: translateY(0px) !important;
-}
-
-/* Progress Bar - Green & Yellow */
+/* Progress Bar */
 .stProgress > div > div {
     background: linear-gradient(90deg, #66bb6a, #ffd54f, #66bb6a) !important;
     background-size: 300% 300% !important;
@@ -303,22 +202,9 @@ st.markdown("""
     border: 2px solid #000000 !important;
 }
 
-/* Sidebar - Bold Black Text */
-.css-1d391kg, .css-1d391kg {
-    background: rgba(255, 255, 255, 0.9) !important;
-    backdrop-filter: blur(20px) !important;
-    border-right: 3px solid #8bc34a !important;
-}
-
-.css-1d391kg p, .css-1d391kg h3 {
-    color: #000000 !important;
-    font-weight: 700 !important;
-}
-
-/* Info Cards - Bold Text */
+/* Info Cards */
 .info-card {
     background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(10px);
     border-radius: 16px;
     padding: 1.5rem;
     border: 2px solid #8bc34a;
@@ -331,65 +217,11 @@ st.markdown("""
     background: rgba(255, 255, 255, 0.95);
 }
 
-.info-card h4 {
-    color: #000000 !important;
-    font-weight: 800 !important;
-    margin-bottom: 0.5rem;
-}
+.info-card h4 { color: #000000 !important; font-weight: 800 !important; }
+.info-card p { color: #000000 !important; font-weight: 600 !important; }
+.info-card strong { color: #000000 !important; font-weight: 900 !important; }
 
-.info-card p {
-    color: #000000 !important;
-    font-weight: 600 !important;
-    margin: 0.25rem 0;
-}
-
-.info-card strong {
-    color: #000000 !important;
-    font-weight: 900 !important;
-}
-
-/* Metrics - Bold Black */
-.metric-value {
-    font-size: 3.2rem;
-    font-weight: 900 !important;
-    color: #000000 !important;
-}
-
-.metric-label {
-    color: #000000 !important;
-    font-size: 1rem;
-    font-weight: 700 !important;
-}
-
-/* Tabs - Bold Black */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
-    background: rgba(255, 255, 255, 0.7);
-    border-radius: 16px;
-    padding: 0.5rem;
-    border: 2px solid #8bc34a;
-}
-
-.stTabs [data-baseweb="tab"] {
-    border-radius: 12px;
-    padding: 0.5rem 1.5rem;
-    font-weight: 700 !important;
-    color: #000000 !important;
-    transition: all 0.3s ease;
-}
-
-.stTabs [data-baseweb="tab"]:hover {
-    background: rgba(139, 195, 74, 0.15);
-}
-
-.stTabs [aria-selected="true"] {
-    background: rgba(139, 195, 74, 0.25) !important;
-    backdrop-filter: blur(10px);
-    color: #000000 !important;
-    font-weight: 800 !important;
-}
-
-/* Footer - Bold Black */
+/* Footer */
 .footer {
     text-align: center;
     padding: 2rem 0;
@@ -397,59 +229,55 @@ st.markdown("""
     font-size: 1rem;
     font-weight: 700 !important;
     margin-top: 2rem;
-    text-shadow: 0 2px 10px rgba(139, 195, 74, 0.1);
-}
-
-/* File Uploader Text */
-.stFileUploader label {
-    color: #000000 !important;
-    font-weight: 700 !important;
-}
-
-/* Expander Text */
-.streamlit-expanderHeader {
-    color: #000000 !important;
-    font-weight: 800 !important;
-    font-size: 1.1rem !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ============ FLOATING PARTICLES (Fixed - No Text Showing) ============
+# ============ FLOATING PARTICLES ============
 def add_particles():
     colors = ['#a5d6a7', '#66bb6a', '#ffe082', '#ffd54f', '#8bc34a', '#f9a825']
-    
-    # Generate particle divs
-    particles = []
+    particles_html = """
+    <style>
+    .particle {
+        position: fixed;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 0;
+        animation: floatUp linear infinite;
+        opacity: 0.10;
+    }
+    @keyframes floatUp {
+        0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+        10% { opacity: 0.10; }
+        90% { opacity: 0.10; }
+        100% { transform: translateY(-10vh) rotate(720deg); opacity: 0; }
+    }
+    .particle-container {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none; z-index: 0; overflow: hidden;
+    }
+    </style>
+    <div class="particle-container">
+    """
     for i in range(15):
         size = random.randint(5, 15)
         left = random.randint(0, 100)
         duration = random.randint(15, 25)
         delay = random.randint(0, 15)
         color = random.choice(colors)
-        particles.append(f"""
+        particles_html += f"""
         <div class="particle" style="
-            width: {size}px;
-            height: {size}px;
-            left: {left}%;
+            width: {size}px; height: {size}px; left: {left}%;
             background: {color};
             animation-duration: {duration}s;
             animation-delay: {delay}s;
             box-shadow: 0 0 15px {color};
         "></div>
-        """)
-    
-    # Combine everything into one HTML string
-    particles_html = f"""
-    <div class="particle-container">
-        {''.join(particles)}
-    </div>
-    """
-    
-    # Use st.components.v1.html to render HTML without markdown interference
+        """
+    particles_html += "</div>"
     import streamlit.components.v1 as components
     components.html(particles_html, height=0)
-    
+
 add_particles()
 
 # ============ SESSION STATE ============
@@ -467,6 +295,20 @@ def load_onnx_model():
     except Exception as e:
         st.error(f"❌ Error loading model: {e}")
         return None, None
+
+# ============ CONVERT KERAS TO ONNX (Run once in Colab) ============
+# If you have the keras model, convert it in Colab:
+"""
+import tensorflow as tf
+import tf2onnx
+
+model = tf.keras.models.load_model('bacteria_classifier.keras')
+spec = (tf.TensorSpec((1, 224, 224, 3), tf.float32, name="input"),)
+model_proto, _ = tf2onnx.convert.from_keras(model, input_signature=spec, opset=13)
+with open("bacteria_classifier.onnx", "wb") as f:
+    f.write(model_proto.SerializeToString())
+print("✅ ONNX model saved!")
+"""
 
 def predict_image(image, session, class_names):
     img = image.resize((224, 224))
@@ -557,7 +399,7 @@ def get_bacteria_info(bacteria_name):
 
 # ============ MAIN APP ============
 def main():
-    # Header - Bold Black Title
+    # Header
     st.markdown("""
         <div style="text-align: center; padding: 0.5rem 0;">
             <div style="font-size: 5rem; margin-bottom: -1.5rem; animation: bounce 2s ease-in-out infinite;">🧫</div>
@@ -571,7 +413,7 @@ def main():
     session, class_names = load_onnx_model()
 
     if session is None:
-        st.error("⚠️ Please make sure 'bacteria_classifier.onnx' and 'class_names.json' are in the same directory.")
+        st.warning("⚠️ Please make sure 'bacteria_classifier.onnx' and 'class_names.json' are in the same directory.")
         return
 
     # Layout
@@ -812,3 +654,23 @@ def main():
 
 if __name__ == "__main__":
     main()
+   
+ 
+  
+   
+
+   
+
+
+
+  
+  
+  
+    
+ 
+  
+
+
+  
+   
+
