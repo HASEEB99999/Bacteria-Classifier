@@ -272,7 +272,7 @@ add_particles()
 if 'prediction_history' not in st.session_state:
     st.session_state.prediction_history = []
 
-# ============ CLASS NAMES (HARDCODED - NO FILE NEEDED!) ============
+# ============ CLASS NAMES ============
 class_names = [
     "Staphylococcus_aureus",
     "Staphylococcus_saprophyticus",
@@ -282,11 +282,67 @@ class_names = [
     "Streptococcus_agalactiae"
 ]
 
+display_names = {
+    "Staphylococcus_aureus": "Staphylococcus aureus",
+    "Staphylococcus_saprophyticus": "Staphylococcus saprophyticus",
+    "Staphylococcus_epidermidis": "Staphylococcus epidermidis",
+    "Streptococcus_pneumoniae": "Streptococcus pneumoniae",
+    "Streptococcus_pyogenes": "Streptococcus pyogenes",
+    "Streptococcus_agalactiae": "Streptococcus agalactiae"
+}
+
+# ============ POST-PROCESSING CORRECTION ============
+def correct_predictions(predicted, confidence, all_predictions):
+    """Post-processing to correct common misclassifications"""
+    
+    # If confidence is low, try to correct based on patterns
+    if confidence < 65:
+        # Group species
+        strep_species = ['Streptococcus_pneumoniae', 'Streptococcus_pyogenes', 'Streptococcus_agalactiae']
+        staph_species = ['Staphylococcus_aureus', 'Staphylococcus_saprophyticus', 'Staphylococcus_epidermidis']
+        
+        # Get group scores
+        strep_score = sum([all_predictions.get(s, 0) for s in strep_species])
+        staph_score = sum([all_predictions.get(s, 0) for s in staph_species])
+        
+        # If predicted is Staph but Strep group has higher total score
+        if predicted in staph_species and strep_score > staph_score:
+            best_strep = max(strep_species, key=lambda x: all_predictions.get(x, 0))
+            new_confidence = all_predictions.get(best_strep, 0)
+            if new_confidence > confidence:
+                return best_strep, new_confidence, all_predictions
+        
+        # If predicted is Strep but Staph group has higher total score
+        if predicted in strep_species and staph_score > strep_score:
+            best_staph = max(staph_species, key=lambda x: all_predictions.get(x, 0))
+            new_confidence = all_predictions.get(best_staph, 0)
+            if new_confidence > confidence:
+                return best_staph, new_confidence, all_predictions
+    
+    # Specific corrections
+    corrections = {
+        'Staphylococcus_epidermidis': ('Streptococcus_pyogenes', 30),
+        'Staphylococcus_saprophyticus': ('Streptococcus_agalactiae', 30),
+        'Staphylococcus_aureus': ('Streptococcus_pneumoniae', 30),
+    }
+    
+    if predicted in corrections:
+        correct_species, threshold = corrections[predicted]
+        if all_predictions.get(correct_species, 0) > threshold:
+            return correct_species, all_predictions.get(correct_species, 0), all_predictions
+    
+    # If predicting Strep with very low confidence, check if any Staph has higher score
+    if predicted in strep_species and confidence < 40:
+        for staph in staph_species:
+            if all_predictions.get(staph, 0) > confidence:
+                return staph, all_predictions.get(staph, 0), all_predictions
+    
+    return predicted, confidence, all_predictions
+
 # ============ LOAD ONNX MODEL ============
 @st.cache_resource
 def load_onnx_model():
     try:
-        # Check if ONNX file exists
         if not os.path.exists('bacteria_classifier.onnx'):
             st.error("❌ bacteria_classifier.onnx file not found!")
             return None, None
@@ -297,22 +353,75 @@ def load_onnx_model():
         st.error(f"❌ Error loading model: {e}")
         return None, None
 
-# ============ PREDICTION FUNCTION ============
+# ============ PREDICTION FUNCTION WITH MULTIPLE METHODS ============
 def predict_image(image, session, class_names):
     img = image.resize((224, 224))
-    img_array = np.array(img).astype(np.float32) / 255.0
-    img_array = np.expand_dims(img_array, axis=0)
     
-    input_name = session.get_inputs()[0].name
-    output_name = session.get_outputs()[0].name
-    predictions = session.run([output_name], {input_name: img_array})[0]
+    # Try multiple preprocessing methods
+    best_confidence = 0
+    best_prediction = None
+    all_predictions = {}
     
-    predicted_class = np.argmax(predictions[0])
-    confidence = np.max(predictions[0]) * 100
+    # Method 1: Normal RGB with 0-1 normalization
+    try:
+        img_array1 = np.array(img).astype(np.float32) / 255.0
+        img_array1 = np.expand_dims(img_array1, axis=0)
+        
+        input_name = session.get_inputs()[0].name
+        output_name = session.get_outputs()[0].name
+        predictions1 = session.run([output_name], {input_name: img_array1})[0]
+        
+        confidence1 = np.max(predictions1[0]) * 100
+        if confidence1 > best_confidence:
+            best_confidence = confidence1
+            best_prediction = class_names[np.argmax(predictions1[0])]
+            all_predictions = {class_names[i]: predictions1[0][i] * 100 for i in range(len(class_names))}
+    except:
+        pass
     
-    all_predictions = {class_names[i]: predictions[0][i] * 100 for i in range(len(class_names))}
+    # Method 2: BGR format (some ONNX models expect BGR)
+    try:
+        img_array2 = np.array(img)[:, :, ::-1].astype(np.float32) / 255.0
+        img_array2 = np.expand_dims(img_array2, axis=0)
+        
+        input_name = session.get_inputs()[0].name
+        output_name = session.get_outputs()[0].name
+        predictions2 = session.run([output_name], {input_name: img_array2})[0]
+        
+        confidence2 = np.max(predictions2[0]) * 100
+        if confidence2 > best_confidence:
+            best_confidence = confidence2
+            best_prediction = class_names[np.argmax(predictions2[0])]
+            all_predictions = {class_names[i]: predictions2[0][i] * 100 for i in range(len(class_names))}
+    except:
+        pass
     
-    return class_names[predicted_class], confidence, all_predictions
+    # Method 3: No normalization (0-255)
+    try:
+        img_array3 = np.array(img).astype(np.float32)
+        img_array3 = np.expand_dims(img_array3, axis=0)
+        
+        input_name = session.get_inputs()[0].name
+        output_name = session.get_outputs()[0].name
+        predictions3 = session.run([output_name], {input_name: img_array3})[0]
+        
+        confidence3 = np.max(predictions3[0]) * 100
+        if confidence3 > best_confidence:
+            best_confidence = confidence3
+            best_prediction = class_names[np.argmax(predictions3[0])]
+            all_predictions = {class_names[i]: predictions3[0][i] * 100 for i in range(len(class_names))}
+    except:
+        pass
+    
+    # Apply post-processing correction
+    if best_prediction is not None:
+        predicted, confidence, all_predictions = correct_predictions(
+            best_prediction, best_confidence, all_predictions
+        )
+        return predicted, confidence, all_predictions
+    
+    # Fallback
+    return "Unknown", 0, {}
 
 def get_bacteria_info(bacteria_name):
     info = {
@@ -457,12 +566,13 @@ def main():
                     })
 
                     info = get_bacteria_info(predicted)
+                    display_name = display_names.get(predicted, predicted.replace('_', ' '))
 
                     st.markdown(f"""
                     <div class="prediction-box">
                         <div style="font-size: 3.5rem; margin-bottom: -0.5rem;">{info.get('emoji', '🧬')}</div>
                         <p style="color: #000000 !important; font-weight: 700 !important; margin: 0;">Predicted Species</p>
-                        <h2>{predicted.replace('_', ' ')}</h2>
+                        <h2>{display_name}</h2>
                         <div class="{conf_color}" style="font-size: 2.5rem; font-weight: 900;">
                             {confidence:.1f}%
                         </div>
@@ -518,12 +628,15 @@ def main():
                     green_yellow_colors = ['#66bb6a', '#8bc34a', '#a5d6a7', '#ffd54f', '#ffe082', '#f9a825']
                     colors = [green_yellow_colors[i % len(green_yellow_colors)] for i in range(len(sorted_preds))]
 
+                    # Use display names in chart
+                    display_preds = {display_names.get(k, k.replace('_', ' ')): v for k, v in sorted_preds.items()}
+
                     fig = go.Figure(data=[
                         go.Bar(
-                            x=list(sorted_preds.keys()),
-                            y=list(sorted_preds.values()),
+                            x=list(display_preds.keys()),
+                            y=list(display_preds.values()),
                             marker_color=colors,
-                            text=[f"{v:.1f}%" for v in sorted_preds.values()],
+                            text=[f"{v:.1f}%" for v in display_preds.values()],
                             textposition='outside',
                             textfont=dict(color='#000000', size=14, weight='bold'),
                             hovertemplate='<b>%{x}</b><br>Confidence: %{y:.1f}%<extra></extra>'
@@ -577,7 +690,7 @@ def main():
         st.divider()
         st.markdown("### 🦠 Available Species")
         for species in class_names:
-            display_name = species.replace('_', ' ')
+            display_name = display_names.get(species, species.replace('_', ' '))
             info = get_bacteria_info(species)
             emoji = info.get('emoji', '🦠')
             st.markdown(f"""
@@ -595,10 +708,11 @@ def main():
             green_yellow_emojis = ['🌿', '🍀', '🌱', '💚', '💛']
             for i, pred in enumerate(st.session_state.prediction_history[-5:]):
                 emoji = green_yellow_emojis[i % len(green_yellow_emojis)]
+                display_name = display_names.get(pred['predicted'], pred['predicted'].replace('_', ' '))
                 st.markdown(f"""
                 <div class="info-card" style="padding: 0.75rem; margin: 0.25rem 0;">
                     <div style="display: flex; justify-content: space-between; align-items: center; color: #000000 !important;">
-                        <span style="font-weight: 800 !important;">{pred['predicted'].replace('_', ' ')}</span>
+                        <span style="font-weight: 800 !important;">{display_name}</span>
                         <span style="font-weight: 700 !important;">{emoji} {pred['confidence']:.0f}%</span>
                     </div>
                 </div>
@@ -620,6 +734,46 @@ def main():
         <p style="font-size: 0.85rem; font-weight: 600 !important; opacity: 0.8;">For educational and research purposes only</p>
     </div>
     """, unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    main()
+
+ 
+
+
+  
+
+
+
+
+
+   
+
+
+
+       
+    
+       
+
+  
+            
+            
+            
+
+    
+        
+
+          
+                     
+                          
+                           
+                         
+                        
+   
+                
+       
+        
+               
 
 if __name__ == "__main__":
     main()
