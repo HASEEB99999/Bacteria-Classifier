@@ -152,28 +152,38 @@ display_names = {
 if 'prediction_history' not in st.session_state:
     st.session_state.prediction_history = []
 
-# ============ FIND FILES ============
-def find_file(filename):
-    """Search for file in multiple possible locations"""
-    # Check current directory
-    if os.path.exists(filename):
-        return filename
+# ============ FIND FILES (WITH VERSION NUMBERS) ============
+def find_onnx_file():
+    """Find ONNX file even with version numbers in name"""
+    # Check for exact name
+    if os.path.exists('mobilenetv2_features.onnx'):
+        return 'mobilenetv2_features.onnx'
     
-    # Check app directory
-    app_dir = os.path.dirname(os.path.abspath(__file__))
-    app_path = os.path.join(app_dir, filename)
-    if os.path.exists(app_path):
-        return app_path
+    # Check for versioned files
+    for f in os.listdir('.'):
+        if f.startswith('mobilenetv2_features') and f.endswith('.onnx'):
+            return f
+        if f.startswith('mobilenetv2_features(') and f.endswith(').onnx'):
+            return f
+        if 'mobilenet' in f.lower() and f.endswith('.onnx'):
+            return f
     
-    # Check mount/src directory (Streamlit Cloud)
-    mount_path = f"/mount/src/bacteria-classifier/{filename}"
-    if os.path.exists(mount_path):
-        return mount_path
+    return None
+
+def find_pkl_file():
+    """Find PKL file even with version numbers in name"""
+    # Check for exact name
+    if os.path.exists('reference_features.pkl'):
+        return 'reference_features.pkl'
     
-    # Check all subdirectories
-    for root, dirs, files in os.walk('.'):
-        if filename in files:
-            return os.path.join(root, filename)
+    # Check for versioned files
+    for f in os.listdir('.'):
+        if f.startswith('reference_features') and f.endswith('.pkl'):
+            return f
+        if f.startswith('reference_features(') and f.endswith(').pkl'):
+            return f
+        if 'reference' in f.lower() and f.endswith('.pkl'):
+            return f
     
     return None
 
@@ -181,7 +191,7 @@ def find_file(filename):
 @st.cache_resource
 def load_onnx_model():
     try:
-        onnx_file = find_file('mobilenetv2_features.onnx')
+        onnx_file = find_onnx_file()
         if onnx_file:
             st.sidebar.success(f"✅ Found ONNX: {onnx_file}")
             session = ort.InferenceSession(onnx_file)
@@ -197,7 +207,7 @@ def load_onnx_model():
 @st.cache_resource
 def load_reference_database():
     try:
-        pkl_file = find_file('reference_features.pkl')
+        pkl_file = find_pkl_file()
         if pkl_file:
             st.sidebar.success(f"✅ Found PKL: {pkl_file}")
             with open(pkl_file, 'rb') as f:
@@ -353,7 +363,6 @@ def main():
     if missing_files:
         st.warning(f"⚠️ Missing files: {', '.join(missing_files)}")
         
-        # Show what files are actually in the directory
         st.info("📁 Files in current directory:")
         for f in os.listdir('.'):
             if os.path.isfile(f):
@@ -361,12 +370,14 @@ def main():
                 st.write(f"  - {f} ({size:.2f} MB)")
         
         st.info("""
-        ### How to fix:
-        1. Make sure the files are in your GitHub repository
-        2. Check the filenames are exactly:
-           - `mobilenetv2_features.onnx`
-           - `reference_features.pkl`
-        3. Redeploy the app
+        ### Quick Fix:
+        The app is looking for files with exact names.
+        
+        Please rename your files on GitHub to:
+        - `mobilenetv2_features.onnx` (instead of mobilenetv2_features(3).onnx)
+        - `reference_features.pkl` (instead of reference_features(4).pkl)
+        
+        Or just wait - this updated app will find them with any name!
         """)
         return
 
