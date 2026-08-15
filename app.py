@@ -1,14 +1,12 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
+import tensorflow as tf
 import plotly.graph_objects as go
 import time
 import pickle
 import os
 from sklearn.metrics.pairwise import cosine_similarity
-from scipy import ndimage
-import hashlib
-import json
 
 # ============ PAGE CONFIG ============
 st.set_page_config(
@@ -153,110 +151,73 @@ display_names = {
 if 'prediction_history' not in st.session_state:
     st.session_state.prediction_history = []
 
-# ============ FEATURE EXTRACTION ============
-def extract_features_from_image(image):
-    """Extract simple color and texture features from image"""
+# ============ TENSORFLOW FEATURE EXTRACTOR ============
+@st.cache_resource
+def get_feature_model():
     try:
-        # Convert to numpy array
-        img_array = np.array(image)
-        
-        # Resize to standard size
-        from PIL import Image
-        img = image.resize((128, 128))
-        img_array = np.array(img)
-        
-        # Color features
-        features = []
-        
-        # Mean and std for each channel
-        for channel in range(3):
-            channel_data = img_array[:, :, channel].flatten()
-            features.append(np.mean(channel_data))
-            features.append(np.std(channel_data))
-        
-        # Color histograms (8 bins each)
-        for channel in range(3):
-            hist, _ = np.histogram(img_array[:, :, channel], bins=8, range=(0, 256))
-            features.extend(hist / np.sum(hist))
-        
-        # Texture features (simple gradient)
-        gray = np.mean(img_array, axis=2)
-        from scipy import ndimage
-        sx = ndimage.sobel(gray, axis=0)
-        sy = ndimage.sobel(gray, axis=1)
-        gradient_mag = np.sqrt(sx**2 + sy**2)
-        features.append(np.mean(gradient_mag))
-        features.append(np.std(gradient_mag))
-        
-        return np.array(features).flatten()
+        model = tf.keras.applications.MobileNetV2(
+            weights='imagenet',
+            include_top=False,
+            input_shape=(224, 224, 3),
+            pooling='avg'
+        )
+        return model
+    except Exception as e:
+        st.error(f"Error loading model: {e}")
+        return None
+
+def extract_features_tf(image, model):
+    """Extract features using MobileNetV2 (1280 dimensions)"""
+    try:
+        img = image.resize((224, 224))
+        img_array = np.array(img).astype(np.float32)
+        img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
+        img_array = np.expand_dims(img_array, axis=0)
+        features = model.predict(img_array, verbose=0)
+        return features.flatten()
     except Exception as e:
         return None
 
-# ============ LOAD OR CREATE DATABASE ============
+# ============ LOAD DATABASE ============
 @st.cache_resource
 def load_reference_database():
-    """Load reference features or create from images if available"""
     try:
-        # Try to load from pickle file
         if os.path.exists('reference_features.pkl'):
             with open('reference_features.pkl', 'rb') as f:
                 data = pickle.load(f)
             
-            # Check if data is valid
-            if 'features' in data and 'labels' in data:
-                return data['features'], data['labels']
+            features = np.array(data['features'])
+            labels = np.array(data['labels'])
+            
+            # Check dimensions
+            print(f"Loaded features shape: {features.shape}")
+            
+            return features, labels
     except Exception as e:
         st.warning(f"Could not load reference file: {e}")
-    
-    # If no reference file, create from local images folder
-    if os.path.exists('reference_images'):
-        st.info("📁 Loading reference images from 'reference_images' folder...")
-        features = []
-        labels = []
-        
-        for species in class_names:
-            species_path = os.path.join('reference_images', species)
-            if os.path.exists(species_path):
-                for img_file in os.listdir(species_path):
-                    if img_file.lower().endswith(('.jpg', '.jpeg', '.png')):
-                        try:
-                            img_path = os.path.join(species_path, img_file)
-                            img = Image.open(img_path)
-                            feat = extract_features_from_image(img)
-                            if feat is not None:
-                                features.append(feat)
-                                labels.append(species)
-                        except:
-                            continue
-        
-        if features:
-            # Save for future use
-            try:
-                data = {'features': np.array(features), 'labels': np.array(labels)}
-                with open('reference_features.pkl', 'wb') as f:
-                    pickle.dump(data, f)
-            except:
-                pass
-            return np.array(features), np.array(labels)
     
     return None, None
 
 # ============ PREDICT ============
-def predict_image(image, ref_features, ref_labels):
-    """Predict bacteria by comparing with reference images"""
+def predict_image(image, ref_features, ref_labels, model):
+    """Predict bacteria using TensorFlow features"""
     try:
         # Extract features from uploaded image
-        query_features = extract_features_from_image(image)
+        query_features = extract_features_tf(image, model)
         
         if query_features is None:
             return None, 0, {}
         
-        # Ensure both are numpy arrays
+        # Ensure correct shape
         query_features = np.array(query_features).reshape(1, -1)
         ref_features = np.array(ref_features)
         
+        # Check dimensions match
+        if query_features.shape[1] != ref_features.shape[1]:
+            st.error(f"Feature dimension mismatch: Query={query_features.shape[1]}, Reference={ref_features.shape[1]}")
+            return None, 0, {}
+        
         # Calculate cosine similarity
-        from sklearn.metrics.pairwise import cosine_similarity
         similarities = cosine_similarity(query_features, ref_features)[0]
         
         # Get predictions per species
@@ -363,7 +324,7 @@ def main():
         </div>
     """, unsafe_allow_html=True)
 
-    if ref_features is None or len(ref_features) == 0:
+    if ref_features is None:
         st.warning("⚠️ Reference database not found. Please upload 'reference_features.pkl' to the app directory.")
         st.info("""
         ### How to get the file:
@@ -371,6 +332,13 @@ def main():
         2. Download the `reference_features.pkl` file
         3. Upload it to this app directory on GitHub
         """)
+        return
+
+    # Load TensorFlow model
+    model = get_feature_model()
+    
+    if model is None:
+        st.error("❌ Could not load TensorFlow model. Please check your installation.")
         return
 
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -401,7 +369,7 @@ def main():
                 with st.spinner("🔍 Comparing with reference images..."):
                     time.sleep(0.5)
                     predicted, confidence, all_predictions = predict_image(
-                        image, ref_features, ref_labels
+                        image, ref_features, ref_labels, model
                     )
 
                     if predicted is None:
