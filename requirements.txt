@@ -1,6 +1,6 @@
 streamlit
+onnxruntime
 numpy
 pillow
 plotly
 scikit-learn
-scipy
