@@ -1,26 +1,25 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-import onnxruntime as ort
 import plotly.graph_objects as go
 import time
 import random
 import os
-import re
+import cv2
+from sklearn.cluster import KMeans
+from scipy import stats
+import colorsys
 
 # ============ PAGE CONFIG ============
 st.set_page_config(
     page_title="🧫 Bacteria Colony Classifier",
     page_icon="🧫",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 # ============ CUSTOM CSS ============
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-* { font-family: 'Inter', sans-serif; }
 .stApp {
     background: linear-gradient(135deg, #d4edda 0%, #fff3cd 25%, #d4edda 50%, #fff3cd 75%, #d4edda 100%);
     background-size: 400% 400%;
@@ -37,33 +36,19 @@ st.markdown("""
     backdrop-filter: blur(20px);
     border-radius: 24px;
     border: 3px solid #8bc34a;
-    box-shadow: 0 8px 32px rgba(139, 195, 74, 0.25);
     padding: 2rem;
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.glass-card:hover {
-    transform: translateY(-8px) scale(1.01);
-    box-shadow: 0 20px 60px rgba(139, 195, 74, 0.35);
+    box-shadow: 0 8px 32px rgba(139, 195, 74, 0.25);
 }
 .main-title {
     text-align: center;
-    font-size: 4.2rem;
+    font-size: 3.5rem;
     font-weight: 900;
-    color: #000000 !important;
-    text-shadow: 0 4px 20px rgba(139, 195, 74, 0.2);
-    padding: 1rem 0;
+    color: #000000;
 }
 .main-title .green-yellow-text {
-    background: linear-gradient(90deg, #558b2f, #f9a825, #558b2f);
-    background-size: 300% 300%;
+    background: linear-gradient(90deg, #558b2f, #f9a825);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    animation: greenYellowText 4s ease infinite;
-}
-@keyframes greenYellowText {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
 }
 .upload-area {
     border: 3px dashed #8bc34a;
@@ -71,12 +56,9 @@ st.markdown("""
     padding: 3rem 2rem;
     text-align: center;
     background: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(10px);
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
 }
 .upload-area:hover {
-    transform: scale(1.03);
     background: rgba(255, 255, 255, 0.9);
     border-color: #558b2f;
 }
@@ -92,7 +74,6 @@ st.markdown("""
 }
 .prediction-box {
     background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(20px);
     border-radius: 24px;
     padding: 2.5rem;
     text-align: center;
@@ -101,70 +82,47 @@ st.markdown("""
     animation: fadeInUp 0.6s ease;
 }
 @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(30px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 .prediction-box h2 {
     font-size: 3rem;
-    font-weight: 900 !important;
-    color: #000000 !important;
+    font-weight: 900;
+    color: #000000;
     margin: 0.5rem 0;
 }
-.confidence-high { color: #2e7d32 !important; font-weight: 900 !important; font-size: 2.2rem; }
-.confidence-medium { color: #f9a825 !important; font-weight: 900 !important; font-size: 2.2rem; }
-.confidence-low { color: #c62828 !important; font-weight: 900 !important; font-size: 2.2rem; }
+.confidence-high { color: #2e7d32; font-weight: 900; font-size: 2.2rem; }
+.confidence-medium { color: #f9a825; font-weight: 900; font-size: 2.2rem; }
+.confidence-low { color: #c62828; font-weight: 900; font-size: 2.2rem; }
 .badge {
     display: inline-block;
     padding: 0.5rem 1.5rem;
     border-radius: 50px;
-    font-weight: 800 !important;
-    font-size: 0.95rem;
-    margin: 0.25rem;
-    color: #000000 !important;
+    font-weight: 800;
     border: 2px solid #000000;
 }
-.badge-success {
-    background: linear-gradient(135deg, #a5d6a7, #66bb6a);
-    box-shadow: 0 4px 20px rgba(102, 187, 106, 0.3);
-}
-.badge-warning {
-    background: linear-gradient(135deg, #ffe082, #ffd54f);
-    box-shadow: 0 4px 20px rgba(255, 213, 79, 0.3);
-}
-.badge-danger {
-    background: linear-gradient(135deg, #ef9a9a, #ef5350);
-    box-shadow: 0 4px 20px rgba(239, 83, 80, 0.3);
-}
-.badge-green-yellow {
-    background: linear-gradient(90deg, #a5d6a7, #ffe082, #a5d6a7);
-    background-size: 300% 300%;
-    animation: greenYellowText 3s ease infinite;
-    border-color: #000000;
-}
+.badge-success { background: #a5d6a7; }
+.badge-warning { background: #ffe082; }
+.badge-danger { background: #ef9a9a; }
 .stButton > button {
-    background: linear-gradient(90deg, #66bb6a, #ffd54f, #66bb6a) !important;
-    background-size: 300% 300% !important;
-    animation: greenYellowText 3s ease infinite !important;
+    background: linear-gradient(90deg, #66bb6a, #ffd54f);
     color: #000000 !important;
-    font-weight: 900 !important;
-    font-size: 1.3rem !important;
-    padding: 1rem 2.5rem !important;
-    border: 3px solid #000000 !important;
-    border-radius: 50px !important;
-    box-shadow: 0 4px 30px rgba(102, 187, 106, 0.3) !important;
-    width: 100% !important;
+    font-weight: 900;
+    font-size: 1.3rem;
+    padding: 1rem 2.5rem;
+    border: 3px solid #000000;
+    border-radius: 50px;
+    width: 100%;
 }
 .stButton > button:hover {
-    transform: translateY(-5px) scale(1.02) !important;
-    box-shadow: 0 10px 50px rgba(102, 187, 106, 0.4) !important;
+    transform: scale(1.02);
+    box-shadow: 0 8px 30px rgba(102, 187, 106, 0.4);
 }
 .stProgress > div > div {
-    background: linear-gradient(90deg, #66bb6a, #ffd54f, #66bb6a) !important;
-    background-size: 300% 300% !important;
-    animation: greenYellowText 3s ease infinite !important;
-    border-radius: 50px !important;
-    height: 14px !important;
-    border: 2px solid #000000 !important;
+    background: linear-gradient(90deg, #66bb6a, #ffd54f) !important;
+    border-radius: 50px;
+    height: 14px;
+    border: 2px solid #000000;
 }
 .info-card {
     background: rgba(255, 255, 255, 0.85);
@@ -172,72 +130,16 @@ st.markdown("""
     padding: 1.5rem;
     border: 2px solid #8bc34a;
     margin: 0.5rem 0;
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.info-card:hover {
-    transform: translateX(8px) scale(1.01);
-    background: rgba(255, 255, 255, 0.95);
-}
-.info-card h4 { color: #000000 !important; font-weight: 800 !important; }
-.info-card p { color: #000000 !important; font-weight: 600 !important; }
-.info-card strong { color: #000000 !important; font-weight: 900 !important; }
 .footer {
     text-align: center;
     padding: 2rem 0;
-    color: #000000 !important;
-    font-size: 1rem;
-    font-weight: 700 !important;
+    color: #000000;
+    font-weight: 700;
     margin-top: 2rem;
 }
 </style>
 """, unsafe_allow_html=True)
-
-# ============ FLOATING PARTICLES ============
-def add_particles():
-    colors = ['#a5d6a7', '#66bb6a', '#ffe082', '#ffd54f', '#8bc34a', '#f9a825']
-    particles_html = """
-    <style>
-    .particle {
-        position: fixed;
-        border-radius: 50%;
-        pointer-events: none;
-        z-index: 0;
-        animation: floatUp linear infinite;
-        opacity: 0.10;
-    }
-    @keyframes floatUp {
-        0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-        10% { opacity: 0.10; }
-        90% { opacity: 0.10; }
-        100% { transform: translateY(-10vh) rotate(720deg); opacity: 0; }
-    }
-    .particle-container {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        pointer-events: none; z-index: 0; overflow: hidden;
-    }
-    </style>
-    <div class="particle-container">
-    """
-    for i in range(15):
-        size = random.randint(5, 15)
-        left = random.randint(0, 100)
-        duration = random.randint(15, 25)
-        delay = random.randint(0, 15)
-        color = random.choice(colors)
-        particles_html += f"""
-        <div class="particle" style="
-            width: {size}px; height: {size}px; left: {left}%;
-            background: {color};
-            animation-duration: {duration}s;
-            animation-delay: {delay}s;
-            box-shadow: 0 0 15px {color};
-        "></div>
-        """
-    particles_html += "</div>"
-    import streamlit.components.v1 as components
-    components.html(particles_html, height=0)
-
-add_particles()
 
 # ============ SESSION STATE ============
 if 'prediction_history' not in st.session_state:
@@ -262,322 +164,341 @@ display_names = {
     "Streptococcus_agalactiae": "Streptococcus agalactiae"
 }
 
-# ============ MORPHOLOGY DATABASE (FROM YOUR EXCEL FILE) ============
+# ============ MORPHOLOGY DATABASE ============
 morphology_db = {
     "Staphylococcus_aureus": {
-        "gram_stain": "Gram-positive cocci in clusters",
-        "blood_agar_growth": "Good",
-        "blood_agar_colony": "Round, smooth, convex, opaque, golden-yellow to cream, 2-4 mm",
+        "color": "golden-yellow",
         "hemolysis": "β-hemolytic",
-        "chocolate_agar": "Good",
-        "msa_growth": "Good",
-        "msa_appearance": "Yellow colonies with yellow medium (mannitol fermented)",
-        "nutrient_agar": "Good",
-        "nutrient_agar_colony": "Round, smooth, convex, opaque, golden-yellow to cream-colored colonies (1-3 mm)",
+        "colony_description": "Round, smooth, convex, opaque, golden-yellow to cream",
+        "size": "2-4 mm",
+        "gram_stain": "Gram-positive cocci in clusters",
+        "msa": "Yellow colonies with yellow medium (mannitol fermented)",
         "key_id": "Catalase+, Coagulase+, Mannitol fermenter",
-        "color_keywords": ["golden", "yellow", "cream", "golden-yellow"]
+        "emoji": "🟡",
+        "treatment": "Methicillin (if MSSA), Vancomycin (if MRSA)",
+        "virulence": "High"
     },
     "Staphylococcus_saprophyticus": {
+        "color": "white-cream",
+        "hemolysis": "γ-hemolytic",
+        "colony_description": "White to cream, smooth, convex colonies",
+        "size": "1-3 mm",
         "gram_stain": "Gram-positive cocci in clusters",
-        "blood_agar_growth": "Good",
-        "blood_agar_colony": "White to cream, smooth, convex colonies",
-        "hemolysis": "Usually γ-hemolytic",
-        "chocolate_agar": "Good",
-        "msa_growth": "Good",
-        "msa_appearance": "White colonies, medium remains pink (usually mannitol negative)",
-        "nutrient_agar": "Good",
-        "nutrient_agar_colony": "Round, smooth, convex, opaque, white to cream-colored colonies; usually non-pigmented",
+        "msa": "White colonies, medium remains pink (mannitol negative)",
         "key_id": "Catalase+, Coagulase−, Novobiocin resistant",
-        "color_keywords": ["white", "cream"]
+        "emoji": "⚪",
+        "treatment": "Trimethoprim-sulfamethoxazole, Nitrofurantoin",
+        "virulence": "Moderate"
     },
     "Staphylococcus_epidermidis": {
-        "gram_stain": "Gram-positive cocci in clusters",
-        "blood_agar_growth": "Good",
-        "blood_agar_colony": "Small, white, smooth colonies",
+        "color": "white-grayish",
         "hemolysis": "γ-hemolytic",
-        "chocolate_agar": "Good",
-        "msa_growth": "Good",
-        "msa_appearance": "Pink colonies, medium remains pink",
-        "nutrient_agar": "Good",
-        "nutrient_agar_colony": "Small, smooth, circular, convex, white to grayish-white colonies; non-pigmented and glossy",
+        "colony_description": "Small, white, smooth colonies",
+        "size": "Small",
+        "gram_stain": "Gram-positive cocci in clusters",
+        "msa": "Pink colonies, medium remains pink",
         "key_id": "Catalase+, Coagulase−, Novobiocin sensitive",
-        "color_keywords": ["white", "grayish", "gray", "small"]
+        "emoji": "🔘",
+        "treatment": "Vancomycin, Rifampin",
+        "virulence": "Low (Opportunistic)"
     },
     "Streptococcus_pneumoniae": {
-        "gram_stain": "Gram-positive lancet-shaped diplococci",
-        "blood_agar_growth": "Good",
-        "blood_agar_colony": "Small, glistening, mucoid; older colonies have central depression (draughtsman)",
+        "color": "gray-translucent",
         "hemolysis": "α-hemolytic",
-        "chocolate_agar": "Excellent",
-        "msa_growth": "No growth",
-        "msa_appearance": "No growth",
-        "nutrient_agar": "Poor to moderate",
-        "nutrient_agar_colony": "Small, round, smooth, translucent to gray colonies; older colonies often develop a central depression",
+        "colony_description": "Small, glistening, mucoid; older colonies have central depression (draughtsman)",
+        "size": "Small",
+        "gram_stain": "Gram-positive lancet-shaped diplococci",
+        "msa": "No growth",
         "key_id": "Optochin sensitive, bile soluble",
-        "color_keywords": ["gray", "translucent", "mucoid", "glistening"]
+        "emoji": "🟣",
+        "treatment": "Penicillin, Ceftriaxone, Vancomycin",
+        "virulence": "High"
     },
     "Streptococcus_pyogenes": {
+        "color": "grayish-white-translucent",
+        "hemolysis": "β-hemolytic (strong)",
+        "colony_description": "Small, translucent, pinpoint colonies",
+        "size": "Tiny (0.5-1 mm)",
         "gram_stain": "Gram-positive cocci in chains",
-        "blood_agar_growth": "Excellent",
-        "blood_agar_colony": "Small, translucent, pinpoint colonies",
-        "hemolysis": "Strong β-hemolytic",
-        "chocolate_agar": "Good",
-        "msa_growth": "No growth",
-        "msa_appearance": "No growth",
-        "nutrient_agar": "Poor",
-        "nutrient_agar_colony": "Tiny (0.5-1 mm), translucent to grayish-white, smooth colonies",
+        "msa": "No growth",
         "key_id": "Bacitracin sensitive, PYR positive",
-        "color_keywords": ["translucent", "grayish", "pinpoint", "tiny"]
+        "emoji": "🔴",
+        "treatment": "Penicillin, Amoxicillin",
+        "virulence": "High"
     },
     "Streptococcus_agalactiae": {
+        "color": "grayish-white-cream",
+        "hemolysis": "β-hemolytic (narrow)",
+        "colony_description": "Gray-white, smooth colonies",
+        "size": "Medium",
         "gram_stain": "Gram-positive cocci in chains",
-        "blood_agar_growth": "Good",
-        "blood_agar_colony": "Gray-white, smooth colonies",
-        "hemolysis": "Narrow β-hemolytic",
-        "chocolate_agar": "Good",
-        "msa_growth": "No growth",
-        "msa_appearance": "No growth",
-        "nutrient_agar": "Moderate",
-        "nutrient_agar_colony": "Medium-sized, smooth, grayish-white to cream, slightly mucoid colonies",
+        "msa": "No growth",
         "key_id": "CAMP positive, Hippurate positive",
-        "color_keywords": ["gray", "white", "cream", "gray-white"]
+        "emoji": "🟢",
+        "treatment": "Penicillin, Ampicillin",
+        "virulence": "Moderate"
     }
 }
 
-# ============ LOAD ONNX MODEL ============
-@st.cache_resource
-def load_onnx_model():
-    try:
-        if not os.path.exists('bacteria_classifier.onnx'):
-            return None
-        
-        session = ort.InferenceSession('bacteria_classifier.onnx')
-        return session
-    except Exception as e:
-        return None
-
-# ============ COLOR-BASED ANALYSIS ============
-def analyze_colony_color(image):
-    """Analyze the image to determine colony color characteristics"""
-    img = image.resize((224, 224))
-    img_array = np.array(img)
+# ============ COMPUTER VISION FEATURE EXTRACTION ============
+def extract_features(image):
+    """Extract features from image using computer vision"""
     
-    # Get average color
-    avg_color = np.mean(img_array, axis=(0, 1))
-    r, g, b = avg_color
+    # Convert to numpy array
+    img_array = np.array(image)
     
-    # Determine color category
-    color_desc = []
+    # Get image dimensions
+    height, width = img_array.shape[:2]
     
-    # Check for golden/yellow
-    if r > 180 and g > 150 and b < 120:
-        color_desc.append("golden-yellow")
-    elif r > 200 and g > 180 and b > 150:
-        color_desc.append("white/cream")
-    elif r < 180 and g < 180 and b < 180:
-        color_desc.append("gray")
+    # Resize for analysis
+    resized = cv2.resize(img_array, (200, 200))
+    
+    # 1. COLOR ANALYSIS
+    # Get dominant colors using K-means
+    pixels = resized.reshape(-1, 3)
+    kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
+    kmeans.fit(pixels)
+    dominant_colors = kmeans.cluster_centers_.astype(int)
+    
+    # Convert to HSV for better color analysis
+    hsv_img = cv2.cvtColor(resized, cv2.COLOR_RGB2HSV)
+    
+    # Average HSV values
+    avg_hue = np.mean(hsv_img[:, :, 0])
+    avg_saturation = np.mean(hsv_img[:, :, 1])
+    avg_value = np.mean(hsv_img[:, :, 2])
+    
+    # 2. TEXTURE ANALYSIS
+    # Convert to grayscale
+    gray = cv2.cvtColor(resized, cv2.COLOR_RGB2GRAY)
+    
+    # Calculate variance (texture measure)
+    variance = np.var(gray)
+    
+    # Edge detection
+    edges = cv2.Canny(gray, 100, 200)
+    edge_density = np.sum(edges > 0) / (edges.shape[0] * edges.shape[1])
+    
+    # 3. SHAPE ANALYSIS
+    # Threshold for colony detection
+    _, thresh = cv2.threshold(gray, 50, 255, cv2.THRESH_BINARY)
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    if contours:
+        largest_contour = max(contours, key=cv2.contourArea)
+        area = cv2.contourArea(largest_contour)
+        perimeter = cv2.arcLength(largest_contour, True)
+        if perimeter > 0:
+            circularity = 4 * np.pi * area / (perimeter * perimeter)
+        else:
+            circularity = 0
     else:
-        color_desc.append("mixed")
+        area = 0
+        circularity = 0
     
-    # Check for opacity (based on variance)
-    variance = np.var(img_array)
-    if variance < 1000:
-        color_desc.append("translucent")
-    else:
-        color_desc.append("opaque")
-    
-    return color_desc, avg_color
+    return {
+        'dominant_colors': dominant_colors,
+        'avg_hue': avg_hue,
+        'avg_saturation': avg_saturation,
+        'avg_value': avg_value,
+        'variance': variance,
+        'edge_density': edge_density,
+        'circularity': circularity,
+        'area': area
+    }
 
-# ============ MORPHOLOGY-BASED MATCHING ============
-def match_morphology(color_desc, avg_color):
-    """Match color characteristics to bacteria in morphology database"""
-    matches = []
+# ============ CLASSIFICATION ENGINE ============
+def classify_bacteria(features):
+    """Classify bacteria based on extracted features"""
+    
+    scores = {}
     
     for species, data in morphology_db.items():
         score = 0
-        color_keywords = data.get("color_keywords", [])
+        reasons = []
         
-        # Check color match
-        for kw in color_keywords:
-            for desc in color_desc:
-                if kw in desc.lower() or desc in kw.lower():
-                    score += 2
+        # 1. COLOR ANALYSIS
+        avg_hue = features['avg_hue']
+        avg_saturation = features['avg_saturation']
+        avg_value = features['avg_value']
         
-        # Check if gram stain matches (if we can infer from color)
-        if "golden" in str(color_desc) and species == "Staphylococcus_aureus":
-            score += 3
-        elif "white" in str(color_desc) and species in ["Staphylococcus_saprophyticus", "Staphylococcus_epidermidis"]:
-            score += 2
-        elif "gray" in str(color_desc) and "Streptococcus" in species:
-            score += 3
-        
-        matches.append((species, score))
-    
-    # Sort by score
-    matches.sort(key=lambda x: x[1], reverse=True)
-    return matches
-
-# ============ SMART HYBRID PREDICTION ============
-def hybrid_predict(image, session):
-    """Combine ONNX prediction with morphology-based matching"""
-    
-    # Step 1: Get morphology match
-    color_desc, avg_color = analyze_colony_color(image)
-    morph_matches = match_morphology(color_desc, avg_color)
-    
-    # Step 2: Get ONNX prediction if available
-    onnx_pred = None
-    onnx_conf = 0
-    onnx_all = {}
-    
-    if session is not None:
-        try:
-            img = image.resize((224, 224))
-            img_array = np.array(img).astype(np.float32) / 255.0
-            img_array = np.expand_dims(img_array, axis=0)
+        # Check for golden-yellow (S. aureus)
+        if data['color'] == 'golden-yellow':
+            # Golden-yellow: Hue around 30-60 (yellow), high saturation
+            if 20 < avg_hue < 60 and avg_saturation > 100:
+                score += 30
+                reasons.append("Golden-yellow color detected")
+            if avg_value > 150:
+                score += 10
+                reasons.append("Bright/opaque appearance")
+                
+        # Check for white/cream (S. saprophyticus)
+        elif data['color'] == 'white-cream':
+            if avg_saturation < 50 and avg_value > 150:
+                score += 25
+                reasons.append("White/cream color detected")
+                
+        # Check for gray/translucent (Streptococcus)
+        elif 'gray' in data['color']:
+            if avg_saturation < 80 and avg_value < 150:
+                score += 25
+                reasons.append("Gray/translucent appearance detected")
+                
+        # 2. SIZE ANALYSIS
+        area = features['area']
+        if data['size'] == 'Tiny (0.5-1 mm)' and area < 5000:
+            score += 15
+            reasons.append("Tiny colony size")
+        elif data['size'] == 'Small' and area < 10000:
+            score += 10
+            reasons.append("Small colony size")
+        elif data['size'] == 'Medium' and 10000 < area < 30000:
+            score += 10
+            reasons.append("Medium colony size")
+        elif data['size'] == '2-4 mm' and 10000 < area < 30000:
+            score += 10
+            reasons.append("Medium-large colony size")
             
-            input_name = session.get_inputs()[0].name
-            output_name = session.get_outputs()[0].name
-            predictions = session.run([output_name], {input_name: img_array})[0]
+        # 3. TEXTURE ANALYSIS
+        variance = features['variance']
+        circularity = features['circularity']
+        
+        # Smooth vs rough
+        if data['colony_description'].find('smooth') != -1:
+            if variance < 2000:
+                score += 10
+                reasons.append("Smooth texture")
+        
+        # Mucoid (S. pneumoniae)
+        if data['colony_description'].find('mucoid') != -1:
+            if circularity > 0.7:
+                score += 15
+                reasons.append("Mucoid/round appearance")
+        
+        # Pinpoint (S. pyogenes)
+        if data['colony_description'].find('pinpoint') != -1:
+            if area < 3000:
+                score += 15
+                reasons.append("Pinpoint colony")
+        
+        # 4. HEMOLYSIS INDICATORS
+        edge_density = features['edge_density']
+        
+        if data['hemolysis'] == 'β-hemolytic':
+            if edge_density > 0.05:
+                score += 10
+                reasons.append("Beta hemolysis pattern")
+        
+        if data['hemolysis'] == 'α-hemolytic':
+            if edge_density > 0.03:
+                score += 10
+                reasons.append("Alpha hemolysis pattern")
+        
+        # 5. MSA GROWTH (inferred from color/colony characteristics)
+        if data['msa'] == 'No growth' and avg_value < 150:
+            score += 5
+            reasons.append("No MSA growth characteristics")
             
-            onnx_pred = class_names[np.argmax(predictions[0])]
-            onnx_conf = np.max(predictions[0]) * 100
-            onnx_all = {class_names[i]: predictions[0][i] * 100 for i in range(len(class_names))}
-        except:
-            pass
+        # Store score and reasons
+        scores[species] = {
+            'score': score,
+            'reasons': reasons[:3]  # Keep top 3 reasons
+        }
     
-    # Step 3: Combine results
-    if morph_matches and morph_matches[0][1] > 0:
-        morph_best = morph_matches[0][0]
-        morph_score = morph_matches[0][1]
-        
-        # If ONNX prediction is available and confidence is high
-        if onnx_pred and onnx_conf > 60:
-            # Check if ONNX and morphology agree
-            if onnx_pred == morph_best:
-                return onnx_pred, onnx_conf, onnx_all, "ML + Morphology confirmed"
-            else:
-                # If morphology score is high, use morphology
-                if morph_score > 5:
-                    # Get confidence from ONNX for morphology species
-                    morph_conf = onnx_all.get(morph_best, 50)
-                    return morph_best, max(morph_conf, 50), onnx_all, "Morphology-based correction applied"
-        
-        # If ONNX confidence is low or not available, use morphology
-        if not onnx_pred or onnx_conf < 50:
-            # Use morphology with a confidence score
-            return morph_best, 65, onnx_all, "Morphology-based identification"
-    
-    # Step 4: Fallback to ONNX or random Strep
-    if onnx_pred:
-        return onnx_pred, onnx_conf, onnx_all, "ML prediction"
-    else:
-        # Default to a Streptococcus
-        import random
-        strep = random.choice(["Streptococcus_pneumoniae", "Streptococcus_pyogenes", "Streptococcus_agalactiae"])
-        return strep, 50, {}, "Fallback: Based on morphology data"
+    return scores
 
 # ============ PREDICTION FUNCTION ============
-def predict_image(image, session):
-    predicted, confidence, all_predictions, reason = hybrid_predict(image, session)
+def predict_image(image):
+    """Main prediction function"""
     
-    # If all_predictions is empty, create default
-    if not all_predictions:
-        all_predictions = {name: 0 for name in class_names}
-        all_predictions[predicted] = confidence
+    # Extract features
+    features = extract_features(image)
     
-    return predicted, confidence, all_predictions, reason
+    # Classify
+    scores = classify_bacteria(features)
+    
+    # Get best match
+    best_species = max(scores, key=lambda x: scores[x]['score'])
+    best_score = scores[best_species]['score']
+    
+    # Calculate confidence (normalized score)
+    max_possible_score = 80
+    confidence = min((best_score / max_possible_score) * 100, 95)
+    
+    # Get all scores for display
+    all_scores = {species: scores[species]['score'] for species in scores}
+    
+    # Get reasons
+    reasons = scores[best_species]['reasons']
+    
+    return best_species, confidence, all_scores, reasons
 
 def get_bacteria_info(bacteria_name):
-    info = {
-        "Staphylococcus_aureus": {
-            "gram_stain": "Gram-positive cocci in clusters",
-            "hemolysis": "β-hemolytic",
-            "key_id": "Catalase+, Coagulase+, Mannitol fermenter",
-            "color": "Golden-yellow to cream",
-            "size": "2-4 mm",
-            "description": "Round, smooth, convex, opaque colonies with golden-yellow pigment",
-            "virulence": "High",
-            "treatment": "Methicillin (if MSSA), Vancomycin (if MRSA)",
-            "emoji": "🟡",
-            "morphology": "Round, smooth, convex, opaque, golden-yellow to cream, 2-4 mm"
-        },
-        "Staphylococcus_saprophyticus": {
-            "gram_stain": "Gram-positive cocci in clusters",
-            "hemolysis": "Usually γ-hemolytic",
-            "key_id": "Catalase+, Coagulase−, Novobiocin resistant",
-            "color": "White to cream",
-            "size": "1-3 mm",
-            "description": "Smooth, convex, opaque colonies; usually non-pigmented",
-            "virulence": "Moderate",
-            "treatment": "Trimethoprim-sulfamethoxazole, Nitrofurantoin",
-            "emoji": "⚪",
-            "morphology": "White to cream, smooth, convex colonies"
-        },
-        "Staphylococcus_epidermidis": {
-            "gram_stain": "Gram-positive cocci in clusters",
-            "hemolysis": "γ-hemolytic",
-            "key_id": "Catalase+, Coagulase−, Novobiocin sensitive",
-            "color": "White to grayish-white",
-            "size": "Small",
-            "description": "Small, smooth, circular, convex, non-pigmented, glossy colonies",
-            "virulence": "Low (Opportunistic)",
-            "treatment": "Vancomycin, Rifampin",
-            "emoji": "🔘",
-            "morphology": "Small, white, smooth colonies"
-        },
-        "Streptococcus_pneumoniae": {
-            "gram_stain": "Gram-positive lancet-shaped diplococci",
-            "hemolysis": "α-hemolytic",
-            "key_id": "Optochin sensitive, bile soluble",
-            "color": "Gray, translucent",
-            "size": "Small",
-            "description": "Small, glistening, mucoid colonies; older colonies have central depression",
-            "virulence": "High",
-            "treatment": "Penicillin, Ceftriaxone, Vancomycin",
-            "emoji": "🟣",
-            "morphology": "Small, glistening, mucoid; older colonies have central depression (draughtsman)"
-        },
-        "Streptococcus_pyogenes": {
-            "gram_stain": "Gram-positive cocci in chains",
-            "hemolysis": "Strong β-hemolytic",
-            "key_id": "Bacitracin sensitive, PYR positive",
-            "color": "Grayish-white, translucent",
-            "size": "Tiny (0.5-1 mm)",
-            "description": "Small, translucent, pinpoint colonies with strong beta hemolysis",
-            "virulence": "High",
-            "treatment": "Penicillin, Amoxicillin",
-            "emoji": "🔴",
-            "morphology": "Small, translucent, pinpoint colonies"
-        },
-        "Streptococcus_agalactiae": {
-            "gram_stain": "Gram-positive cocci in chains",
-            "hemolysis": "Narrow β-hemolytic",
-            "key_id": "CAMP positive, Hippurate positive",
-            "color": "Grayish-white to cream",
-            "size": "Medium",
-            "description": "Medium-sized, smooth, grayish-white to cream, slightly mucoid colonies",
-            "virulence": "Moderate",
-            "treatment": "Penicillin, Ampicillin",
-            "emoji": "🟢",
-            "morphology": "Gray-white, smooth colonies"
-        }
+    """Get detailed information about bacteria"""
+    data = morphology_db.get(bacteria_name, {})
+    return {
+        "gram_stain": data.get("gram_stain", "N/A"),
+        "hemolysis": data.get("hemolysis", "N/A"),
+        "key_id": data.get("key_id", "N/A"),
+        "color": data.get("color", "N/A").replace('-', ' '),
+        "size": data.get("size", "N/A"),
+        "description": data.get("colony_description", "N/A"),
+        "virulence": data.get("virulence", "N/A"),
+        "treatment": data.get("treatment", "N/A"),
+        "emoji": data.get("emoji", "🧬"),
+        "msa": data.get("msa", "N/A")
     }
-    return info.get(bacteria_name, {})
+
+# ============ PARTICLES ============
+def add_particles():
+    colors = ['#a5d6a7', '#66bb6a', '#ffe082', '#ffd54f', '#8bc34a', '#f9a825']
+    particles = []
+    for i in range(15):
+        size = random.randint(5, 15)
+        left = random.randint(0, 100)
+        duration = random.randint(15, 25)
+        delay = random.randint(0, 15)
+        color = random.choice(colors)
+        particles.append(f"""
+        <div style="
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
+            width: {size}px;
+            height: {size}px;
+            left: {left}%;
+            background: {color};
+            animation: floatUp {duration}s ease-in-out infinite;
+            animation-delay: {delay}s;
+            opacity: 0.08;
+            z-index: 0;
+        "></div>
+        """)
+    st.markdown(f"""
+    <style>
+    @keyframes floatUp {{
+        0% {{ transform: translateY(100vh) rotate(0deg); opacity: 0; }}
+        10% {{ opacity: 0.08; }}
+        90% {{ opacity: 0.08; }}
+        100% {{ transform: translateY(-10vh) rotate(720deg); opacity: 0; }}
+    }}
+    </style>
+    {''.join(particles)}
+    """, unsafe_allow_html=True)
+
+add_particles()
 
 # ============ MAIN ============
 def main():
     st.markdown("""
         <div style="text-align: center; padding: 0.5rem 0;">
-            <div style="font-size: 5rem; margin-bottom: -1.5rem; animation: bounce 2s ease-in-out infinite;">🧫</div>
+            <div style="font-size: 4rem;">🧫</div>
             <h1 class="main-title">
                 Bacteria <span class="green-yellow-text">Colony</span> Classifier
             </h1>
-            <p style="text-align: center; font-size: 1.2rem; color: #333; font-weight: 700;">🔬 Upload an image to identify bacteria species</p>
+            <p style="font-size: 1.2rem; color: #333; font-weight: 700;">🔬 Upload an image to identify bacteria species</p>
         </div>
     """, unsafe_allow_html=True)
-
-    session = load_onnx_model()
 
     col1, col2, col3 = st.columns([1, 2, 1])
 
@@ -585,8 +506,8 @@ def main():
         st.markdown("""
         <div class="upload-area">
             <span class="upload-icon">📸</span>
-            <h3>Drop your bacterial colony image here</h3>
-            <p>or click to browse files (JPG, PNG, TIFF)</p>
+            <h3 style="color: #000000;">Drop your bacterial colony image here</h3>
+            <p style="color: #333; font-weight: 600;">or click to browse (JPG, PNG, TIFF)</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -603,15 +524,14 @@ def main():
             st.image(image, caption="📸 Uploaded Image", use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-            if st.button("🔬 Classify Bacteria 🧫", use_container_width=True):
+            if st.button("🔬 Identify Bacteria", use_container_width=True):
                 with st.spinner("🔍 Analyzing colony morphology..."):
                     time.sleep(0.5)
-                    predicted, confidence, all_predictions, reason = predict_image(
-                        image, session
-                    )
-
+                    predicted, confidence, all_scores, reasons = predict_image(image)
+                    
                     display_name = display_names.get(predicted, predicted.replace('_', ' '))
-
+                    info = get_bacteria_info(predicted)
+                    
                     if confidence > 70:
                         conf_level = "High"
                         conf_emoji = "✅"
@@ -627,151 +547,124 @@ def main():
                         conf_emoji = "❌"
                         conf_color = "confidence-low"
                         badge = "badge-danger"
-
+                    
                     st.session_state.prediction_history.append({
                         'predicted': predicted,
                         'confidence': confidence,
                         'timestamp': time.time()
                     })
-
-                    info = get_bacteria_info(predicted)
-
-                    # Get morphology info from database
-                    morph_data = morphology_db.get(predicted, {})
+                    
+                    # Display reasons
+                    reason_text = ""
+                    if reasons:
+                        reason_text = "🔍 " + " • ".join(reasons)
                     
                     st.markdown(f"""
                     <div class="prediction-box">
-                        <div style="font-size: 3.5rem; margin-bottom: -0.5rem;">{info.get('emoji', '🧬')}</div>
-                        <p style="color: #000000 !important; font-weight: 700 !important; margin: 0;">Predicted Species</p>
+                        <div style="font-size: 3.5rem;">{info.get('emoji', '🧬')}</div>
+                        <p style="color: #000000; font-weight: 700; margin: 0;">Identified Species</p>
                         <h2>{display_name}</h2>
-                        <div class="{conf_color}" style="font-size: 2.5rem; font-weight: 900;">
-                            {confidence:.1f}%
-                        </div>
+                        <div class="{conf_color}">{confidence:.1f}%</div>
                         <div>
                             <span class="badge {badge}">{conf_emoji} {conf_level} Confidence</span>
-                            <span class="badge badge-green-yellow">🌿 AI Verified</span>
-                        </div>
-                        <div style="margin-top: 1rem;">
-                            <p style="color: #000000 !important; font-weight: 600 !important; margin: 0; font-size: 1rem;">
-                                {info.get('description', '')}
-                            </p>
                         </div>
                         <div style="margin-top: 1rem; padding: 0.5rem; background: #f0f2f6; border-radius: 8px;">
-                            <p style="color: #000000 !important; font-weight: 600 !important; margin: 0; font-size: 0.85rem;">
-                                🧬 Morphology: {morph_data.get('blood_agar_colony', 'N/A')}
-                            </p>
-                            <p style="color: #000000 !important; font-weight: 600 !important; margin: 0; font-size: 0.85rem;">
-                                🔑 Key ID: {morph_data.get('key_id', 'N/A')}
-                            </p>
-                            <p style="color: #000000 !important; font-weight: 600 !important; margin: 0; font-size: 0.85rem;">
-                                📋 Reason: {reason}
+                            <p style="color: #000000; font-weight: 600; margin: 0; font-size: 0.9rem;">
+                                {reason_text}
                             </p>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-
+                    
                     st.progress(int(confidence))
-
-                    if info:
-                        with st.expander("📊 Detailed Morphology & Clinical Characteristics", expanded=True):
-                            tab1, tab2, tab3 = st.tabs(["🔬 Morphology", "🦠 Clinical", "💊 Treatment"])
-                            
-                            with tab1:
-                                st.markdown(f"""
-                                <div class="info-card">
-                                    <h4>🔬 Morphological Features</h4>
-                                    <p><strong>Gram Stain:</strong> {info['gram_stain']}</p>
-                                    <p><strong>Hemolysis:</strong> {info['hemolysis']}</p>
-                                    <p><strong>Colony Color:</strong> {info['color']}</p>
-                                    <p><strong>Colony Size:</strong> {info['size']}</p>
-                                    <p><strong>Colony Morphology:</strong> {morph_data.get('blood_agar_colony', 'N/A')}</p>
-                                    <p><strong>MSA Growth:</strong> {morph_data.get('msa_growth', 'N/A')}</p>
-                                    <p><strong>MSA Appearance:</strong> {morph_data.get('msa_appearance', 'N/A')}</p>
-                                    <p><strong>Nutrient Agar:</strong> {morph_data.get('nutrient_agar', 'N/A')}</p>
-                                </div>
-                                """, unsafe_allow_html=True)
-                            
-                            with tab2:
-                                st.markdown(f"""
-                                <div class="info-card">
-                                    <h4>🦠 Clinical Information</h4>
-                                    <p><strong>Virulence:</strong> {info['virulence']}</p>
-                                    <p><strong>Key Identification:</strong> {morph_data.get('key_id', 'N/A')}</p>
-                                </div>
-                                """, unsafe_allow_html=True)
-                            
-                            with tab3:
-                                st.markdown(f"""
-                                <div class="info-card">
-                                    <h4>💊 Treatment</h4>
-                                    <p>{info['treatment']}</p>
-                                </div>
-                                """, unsafe_allow_html=True)
-
-                    st.markdown("### 📈 Confidence Scores")
-                    sorted_preds = dict(sorted(all_predictions.items(), key=lambda x: x[1], reverse=True))
-
-                    display_preds = {display_names.get(k, k.replace('_', ' ')): v for k, v in sorted_preds.items()}
-
-                    green_yellow_colors = ['#66bb6a', '#8bc34a', '#a5d6a7', '#ffd54f', '#ffe082', '#f9a825']
-                    colors = [green_yellow_colors[i % len(green_yellow_colors)] for i in range(len(display_preds))]
-
+                    
+                    # Display info
+                    with st.expander("📊 Morphology & Clinical Characteristics", expanded=True):
+                        tab1, tab2, tab3 = st.tabs(["🔬 Morphology", "🦠 Clinical", "💊 Treatment"])
+                        
+                        with tab1:
+                            st.markdown(f"""
+                            <div class="info-card">
+                                <h4>🔬 Morphological Features</h4>
+                                <p><strong>Gram Stain:</strong> {info['gram_stain']}</p>
+                                <p><strong>Hemolysis:</strong> {info['hemolysis']}</p>
+                                <p><strong>Colony Color:</strong> {info['color']}</p>
+                                <p><strong>Colony Size:</strong> {info['size']}</p>
+                                <p><strong>Colony Description:</strong> {info['description']}</p>
+                                <p><strong>MSA Growth:</strong> {info['msa']}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with tab2:
+                            st.markdown(f"""
+                            <div class="info-card">
+                                <h4>🦠 Clinical Information</h4>
+                                <p><strong>Virulence:</strong> {info['virulence']}</p>
+                                <p><strong>Key Identification:</strong> {info['key_id']}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with tab3:
+                            st.markdown(f"""
+                            <div class="info-card">
+                                <h4>💊 Treatment</h4>
+                                <p>{info['treatment']}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    
+                    # Display all scores
+                    st.markdown("### 📊 Identification Scores")
+                    
+                    # Sort scores
+                    sorted_scores = sorted(all_scores.items(), key=lambda x: x[1], reverse=True)
+                    
+                    # Create color mapping
+                    colors = ['#2e7d32' if i==0 else '#bdbdbd' for i in range(len(sorted_scores))]
+                    
+                    # Use display names
+                    display_scores = {display_names.get(k, k.replace('_', ' ')): v for k, v in sorted_scores}
+                    
                     fig = go.Figure(data=[
                         go.Bar(
-                            x=list(display_preds.keys()),
-                            y=list(display_preds.values()),
+                            x=list(display_scores.keys()),
+                            y=list(display_scores.values()),
                             marker_color=colors,
-                            text=[f"{v:.1f}%" for v in display_preds.values()],
+                            text=[f"{v:.0f}%" for v in display_scores.values()],
                             textposition='outside',
-                            textfont=dict(color='#000000', size=14, weight='bold'),
-                            hovertemplate='<b>%{x}</b><br>Confidence: %{y:.1f}%<extra></extra>'
+                            textfont=dict(color='#000000', size=12, weight='bold')
                         )
                     ])
-
+                    
                     fig.update_layout(
-                        xaxis_title="Bacteria Species",
-                        yaxis_title="Confidence (%)",
-                        yaxis_range=[0, 100],
-                        height=450,
+                        height=400,
                         xaxis_tickangle=-45,
                         showlegend=False,
-                        plot_bgcolor='rgba(255,255,255,0.7)',
-                        paper_bgcolor='rgba(255,255,255,0.3)',
-                        margin=dict(l=20, r=20, t=20, b=80),
-                        hovermode='closest',
+                        yaxis_range=[0, max(list(display_scores.values())) * 1.2 + 10],
+                        plot_bgcolor='rgba(255,255,255,0.5)',
+                        paper_bgcolor='rgba(255,255,255,0)',
                         font=dict(color='#000000', weight='bold')
                     )
-
-                    fig.update_traces(
-                        marker_line_color='#000000',
-                        marker_line_width=2,
-                        opacity=0.9
-                    )
-
+                    
                     st.plotly_chart(fig, use_container_width=True)
 
     with st.sidebar:
         st.markdown("""
         <div style="text-align: center; padding: 1rem 0;">
-            <div style="font-size: 3.5rem; animation: bounce 2s ease-in-out infinite;">🧫</div>
-            <h3 style="font-weight: 900 !important; color: #000000 !important;">Bacteria AI</h3>
-            <p style="color: #000000 !important; font-weight: 700 !important; font-size: 0.9rem;">🌿 Hybrid ML + Morphology</p>
+            <div style="font-size: 3rem;">🧫</div>
+            <h3 style="font-weight: 900; color: #000000;">Bacteria AI</h3>
+            <p style="color: #000000; font-weight: 700; font-size: 0.9rem;">🔬 Computer Vision Analysis</p>
         </div>
         """, unsafe_allow_html=True)
-
+        
         st.divider()
-
+        
         st.markdown("""
         <div style="text-align: center;">
-            <div class="metric-value">6</div>
-            <div class="metric-label">Species</div>
-            <div style="margin-top: 0.5rem;">
-                <span class="badge badge-info">ML + Rules</span>
-                <span class="badge badge-green-yellow">🌿 AI Powered</span>
-            </div>
+            <div style="font-size: 2.5rem; font-weight: 900; color: #000000;">6</div>
+            <div style="color: #000000; font-weight: 700;">Species</div>
         </div>
         """, unsafe_allow_html=True)
-
+        
         st.divider()
         st.markdown("### 🦠 Available Species")
         for species in class_names:
@@ -779,44 +672,43 @@ def main():
             info = get_bacteria_info(species)
             emoji = info.get('emoji', '🦠')
             st.markdown(f"""
-            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; 
-                        color: #000000 !important; font-weight: 700 !important;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.2rem 0; 
+                        color: #000000; font-weight: 700;">
                 <span>{emoji}</span>
-                <span style="font-size: 0.9rem; font-weight: 700 !important;">{display_name}</span>
+                <span>{display_name}</span>
             </div>
             """, unsafe_allow_html=True)
-
+        
         st.divider()
-
+        
         if st.session_state.prediction_history:
             st.markdown("### 📜 Recent Predictions")
-            green_yellow_emojis = ['🌿', '🍀', '🌱', '💚', '💛']
+            emojis = ['🌿', '🍀', '🌱', '💚', '💛']
             for i, pred in enumerate(st.session_state.prediction_history[-5:]):
-                emoji = green_yellow_emojis[i % len(green_yellow_emojis)]
+                emoji = emojis[i % len(emojis)]
                 display_name = display_names.get(pred['predicted'], pred['predicted'].replace('_', ' '))
                 st.markdown(f"""
-                <div class="info-card" style="padding: 0.75rem; margin: 0.25rem 0;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; color: #000000 !important;">
-                        <span style="font-weight: 800 !important;">{display_name}</span>
-                        <span style="font-weight: 700 !important;">{emoji} {pred['confidence']:.0f}%</span>
+                <div class="info-card" style="padding: 0.5rem; margin: 0.25rem 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; color: #000000;">
+                        <span style="font-weight: 800;">{display_name}</span>
+                        <span style="font-weight: 700;">{pred['confidence']:.0f}%</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-
+        
         st.divider()
         st.markdown("""
-        <div style="font-size: 0.9rem; color: #000000 !important; font-weight: 700 !important;">
+        <div style="font-size: 0.9rem; color: #000000; font-weight: 700;">
             <p>📤 Upload a clear image</p>
-            <p>🔬 Click Classify</p>
+            <p>🔬 Click Identify</p>
             <p>📊 View detailed analysis</p>
-            <p>🌿 Hybrid ML + Rule-based</p>
         </div>
         """, unsafe_allow_html=True)
-
+    
     st.markdown("""
     <div class="footer">
-        <p style="font-size: 1.1rem; font-weight: 800 !important;">🧫 Bacteria Colony Classifier | Built with ❤️ & 🌿</p>
-        <p style="font-size: 0.85rem; font-weight: 600 !important; opacity: 0.8;">For educational and research purposes only</p>
+        <p style="font-size: 1.1rem; font-weight: 800;">🧫 Bacteria Colony Classifier | Built with ❤️ & 🌿</p>
+        <p style="font-size: 0.85rem; font-weight: 600; opacity: 0.8;">For educational and research purposes only</p>
     </div>
     """, unsafe_allow_html=True)
 
