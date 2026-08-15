@@ -151,32 +151,39 @@ display_names = {
 if 'prediction_history' not in st.session_state:
     st.session_state.prediction_history = []
 
-# ============ LOAD ONNX MODEL ============
+# ============ LOAD FILES ============
 @st.cache_resource
-def load_onnx_model():
+def load_files():
+    """Load both ONNX model and reference database"""
     try:
-        if not os.path.exists('mobilenetv2_features.onnx'):
-            return None
-        session = ort.InferenceSession('mobilenetv2_features.onnx')
-        return session
-    except Exception as e:
-        return None
-
-# ============ LOAD REFERENCE DATABASE ============
-@st.cache_resource
-def load_reference_database():
-    try:
+        # Check if files exist
+        files_found = []
+        if os.path.exists('mobilenetv2_features.onnx'):
+            files_found.append('mobilenetv2_features.onnx')
         if os.path.exists('reference_features.pkl'):
-            with open('reference_features.pkl', 'rb') as f:
-                data = pickle.load(f)
-            return np.array(data['features']), np.array(data['labels'])
+            files_found.append('reference_features.pkl')
+        
+        if len(files_found) < 2:
+            st.warning(f"⚠️ Missing files: {', '.join([f for f in ['mobilenetv2_features.onnx', 'reference_features.pkl'] if f not in files_found])}")
+            return None, None
+        
+        # Load ONNX
+        session = ort.InferenceSession('mobilenetv2_features.onnx')
+        
+        # Load reference database
+        with open('reference_features.pkl', 'rb') as f:
+            data = pickle.load(f)
+        
+        ref_features = np.array(data['features'])
+        ref_labels = np.array(data['labels'])
+        
+        return session, (ref_features, ref_labels)
     except Exception as e:
-        pass
-    return None, None
+        st.error(f"Error loading files: {e}")
+        return None, None
 
 # ============ EXTRACT FEATURES WITH ONNX ============
 def extract_features_onnx(image, session):
-    """Extract features using ONNX Runtime"""
     try:
         img = image.resize((224, 224))
         img_array = np.array(img).astype(np.float32)
@@ -193,7 +200,6 @@ def extract_features_onnx(image, session):
 
 # ============ PREDICT ============
 def predict_image(image, session, ref_features, ref_labels):
-    # Extract features
     query_features = extract_features_onnx(image, session)
     
     if query_features is None:
@@ -204,7 +210,7 @@ def predict_image(image, session, ref_features, ref_labels):
     # Calculate similarity
     similarities = cosine_similarity(query_features, ref_features)[0]
     
-    # Get predictions per species
+    # Get predictions
     predictions = {}
     for species in class_names:
         indices = [i for i, label in enumerate(ref_labels) if label == species]
@@ -292,9 +298,8 @@ def get_bacteria_info(bacteria_name):
 
 # ============ MAIN ============
 def main():
-    # Load ONNX model and reference database
-    onnx_session = load_onnx_model()
-    ref_features, ref_labels = load_reference_database()
+    # Load files
+    session, reference_data = load_files()
     
     st.markdown("""
         <div style="text-align: center; padding: 0.5rem 0;">
@@ -306,13 +311,19 @@ def main():
         </div>
     """, unsafe_allow_html=True)
 
-    if onnx_session is None:
-        st.warning("⚠️ ONNX model not found. Please upload 'mobilenetv2_features.onnx'")
+    if session is None or reference_data is None:
+        st.warning("""
+        ⚠️ Required files not found!
+        
+        Please upload these files to your GitHub repository:
+        - `mobilenetv2_features.onnx`
+        - `reference_features.pkl`
+        
+        Run the Colab code to generate these files.
+        """)
         return
-    
-    if ref_features is None:
-        st.warning("⚠️ Reference database not found. Please upload 'reference_features.pkl'")
-        return
+
+    ref_features, ref_labels = reference_data
 
     col1, col2, col3 = st.columns([1, 2, 1])
 
@@ -342,7 +353,7 @@ def main():
                 with st.spinner("🔍 Analyzing image..."):
                     time.sleep(0.5)
                     predicted, confidence, all_predictions = predict_image(
-                        image, onnx_session, ref_features, ref_labels
+                        image, session, ref_features, ref_labels
                     )
 
                     if predicted is None:
