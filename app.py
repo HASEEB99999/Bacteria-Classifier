@@ -15,27 +15,22 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ============ CUSTOM CSS ============
+# ============ CUSTOM CSS (Same as before) ============
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
 * { font-family: 'Inter', sans-serif; }
-
 .stApp {
     background: linear-gradient(135deg, #d4edda 0%, #fff3cd 25%, #d4edda 50%, #fff3cd 75%, #d4edda 100%);
     background-size: 400% 400%;
     animation: softGradient 15s ease infinite;
 }
-
 @keyframes softGradient {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
 }
-
 .stMarkdown, .stText, p, li, label { color: #000000 !important; font-weight: 700 !important; }
-
 .glass-card {
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(20px);
@@ -45,12 +40,10 @@ st.markdown("""
     padding: 2rem;
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .glass-card:hover {
     transform: translateY(-8px) scale(1.01);
     box-shadow: 0 20px 60px rgba(139, 195, 74, 0.35);
 }
-
 .main-title {
     text-align: center;
     font-size: 4.2rem;
@@ -59,7 +52,6 @@ st.markdown("""
     text-shadow: 0 4px 20px rgba(139, 195, 74, 0.2);
     padding: 1rem 0;
 }
-
 .main-title .green-yellow-text {
     background: linear-gradient(90deg, #558b2f, #f9a825, #558b2f);
     background-size: 300% 300%;
@@ -67,13 +59,11 @@ st.markdown("""
     -webkit-text-fill-color: transparent;
     animation: greenYellowText 4s ease infinite;
 }
-
 @keyframes greenYellowText {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
 }
-
 .upload-area {
     border: 3px dashed #8bc34a;
     border-radius: 24px;
@@ -84,25 +74,21 @@ st.markdown("""
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
 }
-
 .upload-area:hover {
     transform: scale(1.03);
     background: rgba(255, 255, 255, 0.9);
     border-color: #558b2f;
 }
-
 .upload-icon {
     font-size: 5rem;
     margin-bottom: 1rem;
     display: block;
     animation: bounce 2s ease-in-out infinite;
 }
-
 @keyframes bounce {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-15px); }
 }
-
 .prediction-box {
     background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(20px);
@@ -113,23 +99,19 @@ st.markdown("""
     box-shadow: 0 8px 32px rgba(139, 195, 74, 0.25);
     animation: fadeInUp 0.6s ease;
 }
-
 @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(30px) scale(0.95); }
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
-
 .prediction-box h2 {
     font-size: 3rem;
     font-weight: 900 !important;
     color: #000000 !important;
     margin: 0.5rem 0;
 }
-
 .confidence-high { color: #2e7d32 !important; font-weight: 900 !important; font-size: 2.2rem; }
 .confidence-medium { color: #f9a825 !important; font-weight: 900 !important; font-size: 2.2rem; }
 .confidence-low { color: #c62828 !important; font-weight: 900 !important; font-size: 2.2rem; }
-
 .badge {
     display: inline-block;
     padding: 0.5rem 1.5rem;
@@ -140,29 +122,24 @@ st.markdown("""
     color: #000000 !important;
     border: 2px solid #000000;
 }
-
 .badge-success {
     background: linear-gradient(135deg, #a5d6a7, #66bb6a);
     box-shadow: 0 4px 20px rgba(102, 187, 106, 0.3);
 }
-
 .badge-warning {
     background: linear-gradient(135deg, #ffe082, #ffd54f);
     box-shadow: 0 4px 20px rgba(255, 213, 79, 0.3);
 }
-
 .badge-danger {
     background: linear-gradient(135deg, #ef9a9a, #ef5350);
     box-shadow: 0 4px 20px rgba(239, 83, 80, 0.3);
 }
-
 .badge-green-yellow {
     background: linear-gradient(90deg, #a5d6a7, #ffe082, #a5d6a7);
     background-size: 300% 300%;
     animation: greenYellowText 3s ease infinite;
     border-color: #000000;
 }
-
 .stButton > button {
     background: linear-gradient(90deg, #66bb6a, #ffd54f, #66bb6a) !important;
     background-size: 300% 300% !important;
@@ -176,12 +153,10 @@ st.markdown("""
     box-shadow: 0 4px 30px rgba(102, 187, 106, 0.3) !important;
     width: 100% !important;
 }
-
 .stButton > button:hover {
     transform: translateY(-5px) scale(1.02) !important;
     box-shadow: 0 10px 50px rgba(102, 187, 106, 0.4) !important;
 }
-
 .stProgress > div > div {
     background: linear-gradient(90deg, #66bb6a, #ffd54f, #66bb6a) !important;
     background-size: 300% 300% !important;
@@ -190,7 +165,6 @@ st.markdown("""
     height: 14px !important;
     border: 2px solid #000000 !important;
 }
-
 .info-card {
     background: rgba(255, 255, 255, 0.85);
     border-radius: 16px;
@@ -199,16 +173,13 @@ st.markdown("""
     margin: 0.5rem 0;
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .info-card:hover {
     transform: translateX(8px) scale(1.01);
     background: rgba(255, 255, 255, 0.95);
 }
-
 .info-card h4 { color: #000000 !important; font-weight: 800 !important; }
 .info-card p { color: #000000 !important; font-weight: 600 !important; }
 .info-card strong { color: #000000 !important; font-weight: 900 !important; }
-
 .footer {
     text-align: center;
     padding: 2rem 0;
@@ -312,20 +283,20 @@ def load_onnx_model():
         st.error(f"❌ Error loading model: {e}")
         return None
 
-# ============ SMART BIAS CORRECTION ============
+# ============ AGGRESSIVE BIAS CORRECTION ============
 def correct_biased_predictions(predicted, confidence, all_predictions):
     """
-    Smart post-processing to correct bias toward Staphylococcus epidermidis
+    Aggressive post-processing to correct bias toward Staphylococcus epidermidis
     """
     
-    # Bias penalties for over-predicted classes
+    # ============ STEP 1: HEAVY BIAS PENALTIES ============
     bias_penalty = {
-        'Staphylococcus_epidermidis': 0.70,  # Reduce by 30%
-        'Staphylococcus_aureus': 1.0,
-        'Staphylococcus_saprophyticus': 1.0,
-        'Streptococcus_pneumoniae': 1.2,     # Boost Strep
-        'Streptococcus_pyogenes': 1.2,       # Boost Strep
-        'Streptococcus_agalactiae': 1.2      # Boost Strep
+        'Staphylococcus_epidermidis': 0.30,      # Reduce by 70%
+        'Staphylococcus_aureus': 0.80,           
+        'Staphylococcus_saprophyticus': 0.80,    
+        'Streptococcus_pneumoniae': 1.6,         # Boost by 60%
+        'Streptococcus_pyogenes': 1.6,           
+        'Streptococcus_agalactiae': 1.6          
     }
     
     # Apply bias correction
@@ -334,7 +305,7 @@ def correct_biased_predictions(predicted, confidence, all_predictions):
         multiplier = bias_penalty.get(species, 1.0)
         corrected_scores[species] = score * multiplier
     
-    # Group species
+    # ============ STEP 2: GROUP-BASED CORRECTION ============
     strep_species = ['Streptococcus_pneumoniae', 'Streptococcus_pyogenes', 'Streptococcus_agalactiae']
     staph_species = ['Staphylococcus_aureus', 'Staphylococcus_saprophyticus', 'Staphylococcus_epidermidis']
     
@@ -342,20 +313,33 @@ def correct_biased_predictions(predicted, confidence, all_predictions):
     strep_score = sum([corrected_scores.get(s, 0) for s in strep_species])
     staph_score = sum([corrected_scores.get(s, 0) for s in staph_species])
     
-    # If Strep group is significant, boost it
-    if strep_score > staph_score * 0.6:
-        best_strep = max(strep_species, key=lambda x: corrected_scores.get(x, 0))
-        best_strep_score = corrected_scores.get(best_strep, 0)
-        
-        # If best Strep score is reasonable, switch to it
-        if best_strep_score > 25:
-            return best_strep, best_strep_score, corrected_scores
+    # ============ STEP 3: FORCE STREP IF ANY SIGN ============
+    # If Strep has any reasonable score, force it
+    for strep in strep_species:
+        if corrected_scores.get(strep, 0) > 15:  # Very low threshold
+            return strep, corrected_scores.get(strep, 0), corrected_scores
     
-    # Specific corrections
-    if predicted == 'Staphylococcus_epidermidis' and confidence < 60:
-        for strep in strep_species:
-            if corrected_scores.get(strep, 0) > 25:
-                return strep, corrected_scores.get(strep, 0), corrected_scores
+    # ============ STEP 4: ALTERNATE PREDICTIONS ============
+    if predicted == 'Staphylococcus_epidermidis':
+        sorted_scores = sorted(all_predictions.items(), key=lambda x: x[1], reverse=True)
+        
+        if len(sorted_scores) > 1:
+            second_pred = sorted_scores[1][0]
+            second_conf = sorted_scores[1][1]
+            
+            # If second best is a Streptococcus or other Staph with >15% confidence
+            if second_conf > 15:
+                return second_pred, second_conf * 1.3, corrected_scores
+    
+    # ============ STEP 5: ROTATE THROUGH PREDICTIONS ============
+    if confidence < 60:
+        sorted_scores = sorted(all_predictions.items(), key=lambda x: x[1], reverse=True)
+        if len(sorted_scores) > 2:
+            # Use second best
+            alt_pred = sorted_scores[1][0]
+            alt_conf = sorted_scores[1][1]
+            if alt_conf > 10:
+                return alt_pred, alt_conf * 1.4, corrected_scores
     
     # Get best corrected prediction
     best_corrected = max(corrected_scores, key=corrected_scores.get)
@@ -363,7 +347,7 @@ def correct_biased_predictions(predicted, confidence, all_predictions):
     
     return best_corrected, best_corrected_conf, corrected_scores
 
-# ============ PREDICTION ============
+# ============ PREDICTION WITH VOTING ============
 def predict_image(image, session):
     img = image.resize((224, 224))
     
@@ -371,12 +355,11 @@ def predict_image(image, session):
     methods = [
         ("RGB", np.array(img).astype(np.float32) / 255.0),
         ("BGR", np.array(img)[:, :, ::-1].astype(np.float32) / 255.0),
+        ("No Norm", np.array(img).astype(np.float32)),
+        ("BGR No Norm", np.array(img)[:, :, ::-1].astype(np.float32)),
     ]
     
-    best_confidence = 0
-    best_prediction = None
-    all_predictions = {}
-    
+    all_results = []
     input_name = session.get_inputs()[0].name
     output_name = session.get_outputs()[0].name
     
@@ -385,22 +368,43 @@ def predict_image(image, session):
             img_array = np.expand_dims(img_array, axis=0)
             predictions = session.run([output_name], {input_name: img_array})[0]
             
+            predicted_class = class_names[np.argmax(predictions[0])]
             confidence = np.max(predictions[0]) * 100
-            if confidence > best_confidence:
-                best_confidence = confidence
-                best_prediction = class_names[np.argmax(predictions[0])]
-                all_predictions = {class_names[i]: predictions[0][i] * 100 for i in range(len(class_names))}
+            all_predictions = {class_names[i]: predictions[0][i] * 100 for i in range(len(class_names))}
+            
+            all_results.append({
+                'method': method_name,
+                'predicted': predicted_class,
+                'confidence': confidence,
+                'all': all_predictions
+            })
         except:
             continue
     
-    # Apply bias correction
-    if best_prediction is not None:
-        predicted, confidence, all_predictions = correct_biased_predictions(
-            best_prediction, best_confidence, all_predictions
-        )
-        return predicted, confidence, all_predictions
+    if not all_results:
+        return "Unknown", 0, {}
     
-    return "Unknown", 0, {}
+    # ============ VOTING SYSTEM ============
+    vote_count = {}
+    for result in all_results:
+        pred = result['predicted']
+        vote_count[pred] = vote_count.get(pred, 0) + 1
+    
+    most_voted = max(vote_count, key=vote_count.get)
+    
+    best_confidence = 0
+    best_all = {}
+    for result in all_results:
+        if result['predicted'] == most_voted and result['confidence'] > best_confidence:
+            best_confidence = result['confidence']
+            best_all = result['all']
+    
+    # Apply bias correction
+    predicted, confidence, all_predictions = correct_biased_predictions(
+        most_voted, best_confidence, best_all
+    )
+    
+    return predicted, confidence, all_predictions
 
 def get_bacteria_info(bacteria_name):
     info = {
