@@ -1,9 +1,6 @@
 streamlit
-onnxruntime
+tensorflow
 numpy
 pillow
 plotly
-pandas
-matplotlib
 scikit-learn
-seaborn
