@@ -1,11 +1,11 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-import tensorflow as tf
 import plotly.graph_objects as go
 import time
 import pickle
 import os
+from sklearn.metrics.pairwise import cosine_similarity
 
 # ============ PAGE CONFIG ============
 st.set_page_config(
@@ -160,29 +160,43 @@ def load_database():
         st.error(f"Error loading database: {e}")
         return None, None, None
 
-# ============ FEATURE EXTRACTOR ============
-@st.cache_resource
-def get_model():
-    return tf.keras.applications.MobileNetV2(
-        weights='imagenet',
-        include_top=False,
-        input_shape=(224, 224, 3),
-        pooling='avg'
-    )
-
-def extract_features(image, model):
-    img = image.resize((224, 224))
-    img_array = np.array(img).astype(np.float32)
-    img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
-    img_array = np.expand_dims(img_array, axis=0)
-    features = model.predict(img_array, verbose=0)
-    return features.flatten()
+# ============ GET IMAGE FEATURES ============
+def get_image_features(image):
+    """Convert image to a simple feature vector using color histograms"""
+    try:
+        img = image.resize((224, 224))
+        img_array = np.array(img)
+        
+        # Use color histograms as features (no TensorFlow needed!)
+        features = []
+        
+        # RGB histograms (16 bins each)
+        for channel in range(3):
+            hist, _ = np.histogram(img_array[:, :, channel], bins=16, range=(0, 256))
+            features.extend(hist)
+        
+        # Edge detection features (simple)
+        from scipy import ndimage
+        gray = np.mean(img_array, axis=2)
+        sobel_x = ndimage.sobel(gray, axis=0)
+        sobel_y = ndimage.sobel(gray, axis=1)
+        edge_magnitude = np.sqrt(sobel_x**2 + sobel_y**2)
+        edge_mean = np.mean(edge_magnitude)
+        edge_std = np.std(edge_magnitude)
+        features.extend([edge_mean, edge_std])
+        
+        return np.array(features).flatten()
+    except Exception as e:
+        return None
 
 # ============ PREDICT ============
-def predict_image(image, ref_features, ref_labels, model):
-    query_features = extract_features(image, model)
+def predict_image(image, ref_features, ref_labels):
+    query_features = get_image_features(image)
     
-    from sklearn.metrics.pairwise import cosine_similarity
+    if query_features is None:
+        return None, 0, {}
+    
+    # Calculate similarity
     similarities = cosine_similarity([query_features], ref_features)[0]
     
     predictions = {}
@@ -292,13 +306,11 @@ def main():
         st.warning("⚠️ Please upload 'reference_features.pkl' to the app directory.")
         st.info("""
         ### How to get the file:
-        1. Run the Colab code to extract features from your Google Drive images
+        1. Run the feature extraction code in Colab
         2. Download the `reference_features.pkl` file
         3. Upload it to this app directory on GitHub
         """)
         st.stop()
-
-    model = get_model()
 
     col1, col2, col3 = st.columns([1, 2, 1])
 
@@ -328,8 +340,12 @@ def main():
                 with st.spinner("🔍 Comparing with reference images..."):
                     time.sleep(0.5)
                     predicted, confidence, all_predictions = predict_image(
-                        image, ref_features, ref_labels, model
+                        image, ref_features, ref_labels
                     )
+
+                    if predicted is None:
+                        st.error("❌ Could not extract features from image. Please try another image.")
+                        st.stop()
 
                     display_name = display_names.get(predicted, predicted.replace('_', ' '))
 
