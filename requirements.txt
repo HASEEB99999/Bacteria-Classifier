@@ -4,3 +4,4 @@ numpy
 pillow
 plotly
 scikit-learn
+tensorflow
