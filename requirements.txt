@@ -3,3 +3,4 @@ numpy
 pillow
 plotly
 scikit-learn
+scipy
