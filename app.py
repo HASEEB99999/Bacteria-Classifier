@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import time
 import pickle
 import os
+import sys
 from sklearn.metrics.pairwise import cosine_similarity
 
 # ============ PAGE CONFIG ============
@@ -151,29 +152,62 @@ display_names = {
 if 'prediction_history' not in st.session_state:
     st.session_state.prediction_history = []
 
+# ============ FIND FILES ============
+def find_file(filename):
+    """Search for file in multiple possible locations"""
+    # Check current directory
+    if os.path.exists(filename):
+        return filename
+    
+    # Check app directory
+    app_dir = os.path.dirname(os.path.abspath(__file__))
+    app_path = os.path.join(app_dir, filename)
+    if os.path.exists(app_path):
+        return app_path
+    
+    # Check mount/src directory (Streamlit Cloud)
+    mount_path = f"/mount/src/bacteria-classifier/{filename}"
+    if os.path.exists(mount_path):
+        return mount_path
+    
+    # Check all subdirectories
+    for root, dirs, files in os.walk('.'):
+        if filename in files:
+            return os.path.join(root, filename)
+    
+    return None
+
 # ============ LOAD ONNX MODEL ============
 @st.cache_resource
 def load_onnx_model():
     try:
-        if os.path.exists('mobilenetv2_features.onnx'):
-            session = ort.InferenceSession('mobilenetv2_features.onnx')
+        onnx_file = find_file('mobilenetv2_features.onnx')
+        if onnx_file:
+            st.sidebar.success(f"✅ Found ONNX: {onnx_file}")
+            session = ort.InferenceSession(onnx_file)
             return session
-        return None
+        else:
+            st.sidebar.error("❌ mobilenetv2_features.onnx not found")
+            return None
     except Exception as e:
-        st.error(f"Error loading ONNX: {e}")
+        st.sidebar.error(f"❌ Error loading ONNX: {e}")
         return None
 
 # ============ LOAD REFERENCE DATABASE ============
 @st.cache_resource
 def load_reference_database():
     try:
-        if os.path.exists('reference_features.pkl'):
-            with open('reference_features.pkl', 'rb') as f:
+        pkl_file = find_file('reference_features.pkl')
+        if pkl_file:
+            st.sidebar.success(f"✅ Found PKL: {pkl_file}")
+            with open(pkl_file, 'rb') as f:
                 data = pickle.load(f)
             return np.array(data['features']), np.array(data['labels'])
-        return None, None
+        else:
+            st.sidebar.error("❌ reference_features.pkl not found")
+            return None, None
     except Exception as e:
-        st.error(f"Error loading reference: {e}")
+        st.sidebar.error(f"❌ Error loading PKL: {e}")
         return None, None
 
 # ============ EXTRACT FEATURES USING ONNX ============
@@ -182,7 +216,7 @@ def extract_features_onnx(image, session):
         img = image.resize((224, 224))
         img_array = np.array(img).astype(np.float32)
         
-        # MobileNetV2 preprocessing (no TF needed!)
+        # MobileNetV2 preprocessing
         img_array = (img_array - 127.5) / 127.5  # Scale to [-1, 1]
         img_array = np.expand_dims(img_array, axis=0)
         
@@ -318,11 +352,21 @@ def main():
     
     if missing_files:
         st.warning(f"⚠️ Missing files: {', '.join(missing_files)}")
+        
+        # Show what files are actually in the directory
+        st.info("📁 Files in current directory:")
+        for f in os.listdir('.'):
+            if os.path.isfile(f):
+                size = os.path.getsize(f) / (1024 * 1024)
+                st.write(f"  - {f} ({size:.2f} MB)")
+        
         st.info("""
         ### How to fix:
-        1. Run the Colab code to generate these files
-        2. Upload them to your GitHub repository
-        3. Redeploy
+        1. Make sure the files are in your GitHub repository
+        2. Check the filenames are exactly:
+           - `mobilenetv2_features.onnx`
+           - `reference_features.pkl`
+        3. Redeploy the app
         """)
         return
 
