@@ -6,6 +6,9 @@ import time
 import pickle
 import os
 from sklearn.metrics.pairwise import cosine_similarity
+from scipy import ndimage
+import hashlib
+import json
 
 # ============ PAGE CONFIG ============
 st.set_page_config(
@@ -146,75 +149,132 @@ display_names = {
     "Streptococcus_agalactiae": "Streptococcus agalactiae"
 }
 
-# ============ LOAD DATABASE ============
-@st.cache_resource
-def load_database():
-    try:
-        if os.path.exists('reference_features.pkl'):
-            with open('reference_features.pkl', 'rb') as f:
-                data = pickle.load(f)
-            return data['features'], data['labels'], data['class_names']
-        else:
-            return None, None, None
-    except Exception as e:
-        st.error(f"Error loading database: {e}")
-        return None, None, None
+# ============ SESSION STATE ============
+if 'prediction_history' not in st.session_state:
+    st.session_state.prediction_history = []
 
-# ============ GET IMAGE FEATURES ============
-def get_image_features(image):
-    """Convert image to a simple feature vector using color histograms"""
+# ============ FEATURE EXTRACTION ============
+def extract_features_from_image(image):
+    """Extract simple color and texture features from image"""
     try:
-        img = image.resize((224, 224))
+        # Convert to numpy array
+        img_array = np.array(image)
+        
+        # Resize to standard size
+        from PIL import Image
+        img = image.resize((128, 128))
         img_array = np.array(img)
         
-        # Use color histograms as features (no TensorFlow needed!)
+        # Color features
         features = []
         
-        # RGB histograms (16 bins each)
+        # Mean and std for each channel
         for channel in range(3):
-            hist, _ = np.histogram(img_array[:, :, channel], bins=16, range=(0, 256))
-            features.extend(hist)
+            channel_data = img_array[:, :, channel].flatten()
+            features.append(np.mean(channel_data))
+            features.append(np.std(channel_data))
         
-        # Edge detection features (simple)
-        from scipy import ndimage
+        # Color histograms (8 bins each)
+        for channel in range(3):
+            hist, _ = np.histogram(img_array[:, :, channel], bins=8, range=(0, 256))
+            features.extend(hist / np.sum(hist))
+        
+        # Texture features (simple gradient)
         gray = np.mean(img_array, axis=2)
-        sobel_x = ndimage.sobel(gray, axis=0)
-        sobel_y = ndimage.sobel(gray, axis=1)
-        edge_magnitude = np.sqrt(sobel_x**2 + sobel_y**2)
-        edge_mean = np.mean(edge_magnitude)
-        edge_std = np.std(edge_magnitude)
-        features.extend([edge_mean, edge_std])
+        from scipy import ndimage
+        sx = ndimage.sobel(gray, axis=0)
+        sy = ndimage.sobel(gray, axis=1)
+        gradient_mag = np.sqrt(sx**2 + sy**2)
+        features.append(np.mean(gradient_mag))
+        features.append(np.std(gradient_mag))
         
         return np.array(features).flatten()
     except Exception as e:
         return None
 
+# ============ LOAD OR CREATE DATABASE ============
+@st.cache_resource
+def load_reference_database():
+    """Load reference features or create from images if available"""
+    try:
+        # Try to load from pickle file
+        if os.path.exists('reference_features.pkl'):
+            with open('reference_features.pkl', 'rb') as f:
+                data = pickle.load(f)
+            
+            # Check if data is valid
+            if 'features' in data and 'labels' in data:
+                return data['features'], data['labels']
+    except Exception as e:
+        st.warning(f"Could not load reference file: {e}")
+    
+    # If no reference file, create from local images folder
+    if os.path.exists('reference_images'):
+        st.info("📁 Loading reference images from 'reference_images' folder...")
+        features = []
+        labels = []
+        
+        for species in class_names:
+            species_path = os.path.join('reference_images', species)
+            if os.path.exists(species_path):
+                for img_file in os.listdir(species_path):
+                    if img_file.lower().endswith(('.jpg', '.jpeg', '.png')):
+                        try:
+                            img_path = os.path.join(species_path, img_file)
+                            img = Image.open(img_path)
+                            feat = extract_features_from_image(img)
+                            if feat is not None:
+                                features.append(feat)
+                                labels.append(species)
+                        except:
+                            continue
+        
+        if features:
+            # Save for future use
+            try:
+                data = {'features': np.array(features), 'labels': np.array(labels)}
+                with open('reference_features.pkl', 'wb') as f:
+                    pickle.dump(data, f)
+            except:
+                pass
+            return np.array(features), np.array(labels)
+    
+    return None, None
+
 # ============ PREDICT ============
 def predict_image(image, ref_features, ref_labels):
-    query_features = get_image_features(image)
-    
-    if query_features is None:
+    """Predict bacteria by comparing with reference images"""
+    try:
+        # Extract features from uploaded image
+        query_features = extract_features_from_image(image)
+        
+        if query_features is None:
+            return None, 0, {}
+        
+        # Ensure both are numpy arrays
+        query_features = np.array(query_features).reshape(1, -1)
+        ref_features = np.array(ref_features)
+        
+        # Calculate cosine similarity
+        from sklearn.metrics.pairwise import cosine_similarity
+        similarities = cosine_similarity(query_features, ref_features)[0]
+        
+        # Get predictions per species
+        predictions = {}
+        for species in class_names:
+            indices = [i for i, label in enumerate(ref_labels) if label == species]
+            if indices:
+                predictions[species] = np.mean(similarities[indices]) * 100
+            else:
+                predictions[species] = 0
+        
+        predicted = max(predictions, key=predictions.get)
+        confidence = predictions[predicted]
+        
+        return predicted, confidence, predictions
+    except Exception as e:
+        st.error(f"Prediction error: {e}")
         return None, 0, {}
-    
-    # Calculate similarity
-    similarities = cosine_similarity([query_features], ref_features)[0]
-    
-    predictions = {}
-    for species in class_names:
-        indices = [i for i, label in enumerate(ref_labels) if label == species]
-        if indices:
-            predictions[species] = np.mean(similarities[indices]) * 100
-        else:
-            predictions[species] = 0
-    
-    predicted = max(predictions, key=predictions.get)
-    confidence = predictions[predicted]
-    
-    return predicted, confidence, predictions
-
-# ============ SESSION STATE ============
-if 'prediction_history' not in st.session_state:
-    st.session_state.prediction_history = []
 
 # ============ GET BACTERIA INFO ============
 def get_bacteria_info(bacteria_name):
@@ -290,7 +350,8 @@ def get_bacteria_info(bacteria_name):
 
 # ============ MAIN ============
 def main():
-    ref_features, ref_labels, ref_classes = load_database()
+    # Load reference database
+    ref_features, ref_labels = load_reference_database()
     
     st.markdown("""
         <div style="text-align: center; padding: 0.5rem 0;">
@@ -302,15 +363,15 @@ def main():
         </div>
     """, unsafe_allow_html=True)
 
-    if ref_features is None:
-        st.warning("⚠️ Please upload 'reference_features.pkl' to the app directory.")
+    if ref_features is None or len(ref_features) == 0:
+        st.warning("⚠️ Reference database not found. Please upload 'reference_features.pkl' to the app directory.")
         st.info("""
         ### How to get the file:
         1. Run the feature extraction code in Colab
         2. Download the `reference_features.pkl` file
         3. Upload it to this app directory on GitHub
         """)
-        st.stop()
+        return
 
     col1, col2, col3 = st.columns([1, 2, 1])
 
@@ -344,7 +405,7 @@ def main():
                     )
 
                     if predicted is None:
-                        st.error("❌ Could not extract features from image. Please try another image.")
+                        st.error("❌ Could not identify the bacteria. Please try a clearer image.")
                         st.stop()
 
                     display_name = display_names.get(predicted, predicted.replace('_', ' '))
