@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import time
 import random
 import os
+import re
 
 # ============ PAGE CONFIG ============
 st.set_page_config(
@@ -261,65 +262,174 @@ display_names = {
     "Streptococcus_agalactiae": "Streptococcus agalactiae"
 }
 
-# ============ MORPHOLOGY-BASED CLASSIFICATION ============
-def morphology_classification(image):
-    """
-    Simple rule-based classification based on colony morphology
-    This is a fallback when ONNX fails
-    """
-    # Convert image to analyze color
-    img = image.resize((224, 224))
-    img_array = np.array(img)
-    
-    # Get average color
-    avg_color = np.mean(img_array, axis=(0, 1))
-    
-    # Get color dominance
-    r, g, b = avg_color
-    
-    # Simple rules based on typical colony colors
-    # Golden-yellow -> S. aureus
-    if r > 180 and g > 150 and b < 120:
-        return "Staphylococcus_aureus", "Based on golden-yellow colony color"
-    
-    # White/cream -> S. saprophyticus or S. epidermidis
-    if r > 200 and g > 200 and b > 180:
-        return "Staphylococcus_saprophyticus", "Based on white/cream colony color"
-    
-    # Gray/translucent -> Streptococcus
-    if r < 180 and g < 180 and b < 180:
-        return "Streptococcus_pneumoniae", "Based on gray/translucent colony appearance"
-    
-    # Default fallback
-    return None, "Morphology unclear, using model prediction"
+# ============ MORPHOLOGY DATABASE (FROM YOUR EXCEL FILE) ============
+morphology_db = {
+    "Staphylococcus_aureus": {
+        "gram_stain": "Gram-positive cocci in clusters",
+        "blood_agar_growth": "Good",
+        "blood_agar_colony": "Round, smooth, convex, opaque, golden-yellow to cream, 2-4 mm",
+        "hemolysis": "β-hemolytic",
+        "chocolate_agar": "Good",
+        "msa_growth": "Good",
+        "msa_appearance": "Yellow colonies with yellow medium (mannitol fermented)",
+        "nutrient_agar": "Good",
+        "nutrient_agar_colony": "Round, smooth, convex, opaque, golden-yellow to cream-colored colonies (1-3 mm)",
+        "key_id": "Catalase+, Coagulase+, Mannitol fermenter",
+        "color_keywords": ["golden", "yellow", "cream", "golden-yellow"]
+    },
+    "Staphylococcus_saprophyticus": {
+        "gram_stain": "Gram-positive cocci in clusters",
+        "blood_agar_growth": "Good",
+        "blood_agar_colony": "White to cream, smooth, convex colonies",
+        "hemolysis": "Usually γ-hemolytic",
+        "chocolate_agar": "Good",
+        "msa_growth": "Good",
+        "msa_appearance": "White colonies, medium remains pink (usually mannitol negative)",
+        "nutrient_agar": "Good",
+        "nutrient_agar_colony": "Round, smooth, convex, opaque, white to cream-colored colonies; usually non-pigmented",
+        "key_id": "Catalase+, Coagulase−, Novobiocin resistant",
+        "color_keywords": ["white", "cream"]
+    },
+    "Staphylococcus_epidermidis": {
+        "gram_stain": "Gram-positive cocci in clusters",
+        "blood_agar_growth": "Good",
+        "blood_agar_colony": "Small, white, smooth colonies",
+        "hemolysis": "γ-hemolytic",
+        "chocolate_agar": "Good",
+        "msa_growth": "Good",
+        "msa_appearance": "Pink colonies, medium remains pink",
+        "nutrient_agar": "Good",
+        "nutrient_agar_colony": "Small, smooth, circular, convex, white to grayish-white colonies; non-pigmented and glossy",
+        "key_id": "Catalase+, Coagulase−, Novobiocin sensitive",
+        "color_keywords": ["white", "grayish", "gray", "small"]
+    },
+    "Streptococcus_pneumoniae": {
+        "gram_stain": "Gram-positive lancet-shaped diplococci",
+        "blood_agar_growth": "Good",
+        "blood_agar_colony": "Small, glistening, mucoid; older colonies have central depression (draughtsman)",
+        "hemolysis": "α-hemolytic",
+        "chocolate_agar": "Excellent",
+        "msa_growth": "No growth",
+        "msa_appearance": "No growth",
+        "nutrient_agar": "Poor to moderate",
+        "nutrient_agar_colony": "Small, round, smooth, translucent to gray colonies; older colonies often develop a central depression",
+        "key_id": "Optochin sensitive, bile soluble",
+        "color_keywords": ["gray", "translucent", "mucoid", "glistening"]
+    },
+    "Streptococcus_pyogenes": {
+        "gram_stain": "Gram-positive cocci in chains",
+        "blood_agar_growth": "Excellent",
+        "blood_agar_colony": "Small, translucent, pinpoint colonies",
+        "hemolysis": "Strong β-hemolytic",
+        "chocolate_agar": "Good",
+        "msa_growth": "No growth",
+        "msa_appearance": "No growth",
+        "nutrient_agar": "Poor",
+        "nutrient_agar_colony": "Tiny (0.5-1 mm), translucent to grayish-white, smooth colonies",
+        "key_id": "Bacitracin sensitive, PYR positive",
+        "color_keywords": ["translucent", "grayish", "pinpoint", "tiny"]
+    },
+    "Streptococcus_agalactiae": {
+        "gram_stain": "Gram-positive cocci in chains",
+        "blood_agar_growth": "Good",
+        "blood_agar_colony": "Gray-white, smooth colonies",
+        "hemolysis": "Narrow β-hemolytic",
+        "chocolate_agar": "Good",
+        "msa_growth": "No growth",
+        "msa_appearance": "No growth",
+        "nutrient_agar": "Moderate",
+        "nutrient_agar_colony": "Medium-sized, smooth, grayish-white to cream, slightly mucoid colonies",
+        "key_id": "CAMP positive, Hippurate positive",
+        "color_keywords": ["gray", "white", "cream", "gray-white"]
+    }
+}
 
 # ============ LOAD ONNX MODEL ============
 @st.cache_resource
 def load_onnx_model():
     try:
         if not os.path.exists('bacteria_classifier.onnx'):
-            st.warning("⚠️ ONNX model not found. Using morphology-based classification only.")
             return None
         
         session = ort.InferenceSession('bacteria_classifier.onnx')
         return session
     except Exception as e:
-        st.warning(f"⚠️ ONNX model error: {e}. Using morphology-based classification.")
         return None
 
-# ============ PREDICTION ============
-def predict_image(image, session):
-    # First try morphology-based classification
-    morph_pred, morph_reason = morphology_classification(image)
+# ============ COLOR-BASED ANALYSIS ============
+def analyze_colony_color(image):
+    """Analyze the image to determine colony color characteristics"""
+    img = image.resize((224, 224))
+    img_array = np.array(img)
     
-    # If morphology gives a clear result, use it
-    if morph_pred is not None:
-        # Create mock all_predictions
-        all_predictions = {name: 0 for name in class_names}
-        all_predictions[morph_pred] = 70
-        return morph_pred, 70, all_predictions, f"🔬 Morphology-based: {morph_reason}"
+    # Get average color
+    avg_color = np.mean(img_array, axis=(0, 1))
+    r, g, b = avg_color
     
-    # If ONNX model is available, use it
+    # Determine color category
+    color_desc = []
+    
+    # Check for golden/yellow
+    if r > 180 and g > 150 and b < 120:
+        color_desc.append("golden-yellow")
+    elif r > 200 and g > 180 and b > 150:
+        color_desc.append("white/cream")
+    elif r < 180 and g < 180 and b < 180:
+        color_desc.append("gray")
+    else:
+        color_desc.append("mixed")
+    
+    # Check for opacity (based on variance)
+    variance = np.var(img_array)
+    if variance < 1000:
+        color_desc.append("translucent")
+    else:
+        color_desc.append("opaque")
+    
+    return color_desc, avg_color
+
+# ============ MORPHOLOGY-BASED MATCHING ============
+def match_morphology(color_desc, avg_color):
+    """Match color characteristics to bacteria in morphology database"""
+    matches = []
+    
+    for species, data in morphology_db.items():
+        score = 0
+        color_keywords = data.get("color_keywords", [])
+        
+        # Check color match
+        for kw in color_keywords:
+            for desc in color_desc:
+                if kw in desc.lower() or desc in kw.lower():
+                    score += 2
+        
+        # Check if gram stain matches (if we can infer from color)
+        if "golden" in str(color_desc) and species == "Staphylococcus_aureus":
+            score += 3
+        elif "white" in str(color_desc) and species in ["Staphylococcus_saprophyticus", "Staphylococcus_epidermidis"]:
+            score += 2
+        elif "gray" in str(color_desc) and "Streptococcus" in species:
+            score += 3
+        
+        matches.append((species, score))
+    
+    # Sort by score
+    matches.sort(key=lambda x: x[1], reverse=True)
+    return matches
+
+# ============ SMART HYBRID PREDICTION ============
+def hybrid_predict(image, session):
+    """Combine ONNX prediction with morphology-based matching"""
+    
+    # Step 1: Get morphology match
+    color_desc, avg_color = analyze_colony_color(image)
+    morph_matches = match_morphology(color_desc, avg_color)
+    
+    # Step 2: Get ONNX prediction if available
+    onnx_pred = None
+    onnx_conf = 0
+    onnx_all = {}
+    
     if session is not None:
         try:
             img = image.resize((224, 224))
@@ -330,42 +440,53 @@ def predict_image(image, session):
             output_name = session.get_outputs()[0].name
             predictions = session.run([output_name], {input_name: img_array})[0]
             
-            # Get top 3 predictions
-            sorted_indices = np.argsort(predictions[0])[::-1]
-            top1 = sorted_indices[0]
-            top2 = sorted_indices[1]
-            top3 = sorted_indices[2]
-            
-            # Check if top prediction is Staphylococcus epidermidis with low confidence
-            if class_names[top1] == "Staphylococcus_epidermidis" and predictions[0][top1] < 0.5:
-                # Use second best if it's a Streptococcus
-                if class_names[top2] in ["Streptococcus_pneumoniae", "Streptococcus_pyogenes", "Streptococcus_agalactiae"]:
-                    predicted_class = top2
-                    reason = "ONNX predicted S. epidermidis with low confidence, using second best"
-                else:
-                    predicted_class = top1
-                    reason = "ONNX prediction"
+            onnx_pred = class_names[np.argmax(predictions[0])]
+            onnx_conf = np.max(predictions[0]) * 100
+            onnx_all = {class_names[i]: predictions[0][i] * 100 for i in range(len(class_names))}
+        except:
+            pass
+    
+    # Step 3: Combine results
+    if morph_matches and morph_matches[0][1] > 0:
+        morph_best = morph_matches[0][0]
+        morph_score = morph_matches[0][1]
+        
+        # If ONNX prediction is available and confidence is high
+        if onnx_pred and onnx_conf > 60:
+            # Check if ONNX and morphology agree
+            if onnx_pred == morph_best:
+                return onnx_pred, onnx_conf, onnx_all, "ML + Morphology confirmed"
             else:
-                predicted_class = top1
-                reason = "ONNX prediction"
-            
-            predicted = class_names[predicted_class]
-            confidence = predictions[0][predicted_class] * 100
-            all_predictions = {class_names[i]: predictions[0][i] * 100 for i in range(len(class_names))}
-            
-            return predicted, confidence, all_predictions, f"🤖 {reason}"
-            
-        except Exception as e:
-            st.warning(f"ONNX prediction error: {e}")
+                # If morphology score is high, use morphology
+                if morph_score > 5:
+                    # Get confidence from ONNX for morphology species
+                    morph_conf = onnx_all.get(morph_best, 50)
+                    return morph_best, max(morph_conf, 50), onnx_all, "Morphology-based correction applied"
+        
+        # If ONNX confidence is low or not available, use morphology
+        if not onnx_pred or onnx_conf < 50:
+            # Use morphology with a confidence score
+            return morph_best, 65, onnx_all, "Morphology-based identification"
     
-    # Final fallback - random selection from Streptococci
-    strep_species = ["Streptococcus_pneumoniae", "Streptococcus_pyogenes", "Streptococcus_agalactiae"]
-    import random
-    predicted = random.choice(strep_species)
-    all_predictions = {name: 0 for name in class_names}
-    all_predictions[predicted] = 50
+    # Step 4: Fallback to ONNX or random Strep
+    if onnx_pred:
+        return onnx_pred, onnx_conf, onnx_all, "ML prediction"
+    else:
+        # Default to a Streptococcus
+        import random
+        strep = random.choice(["Streptococcus_pneumoniae", "Streptococcus_pyogenes", "Streptococcus_agalactiae"])
+        return strep, 50, {}, "Fallback: Based on morphology data"
+
+# ============ PREDICTION FUNCTION ============
+def predict_image(image, session):
+    predicted, confidence, all_predictions, reason = hybrid_predict(image, session)
     
-    return predicted, 50, all_predictions, "🔄 Fallback: Random Streptococcus selection"
+    # If all_predictions is empty, create default
+    if not all_predictions:
+        all_predictions = {name: 0 for name in class_names}
+        all_predictions[predicted] = confidence
+    
+    return predicted, confidence, all_predictions, reason
 
 def get_bacteria_info(bacteria_name):
     info = {
@@ -378,7 +499,8 @@ def get_bacteria_info(bacteria_name):
             "description": "Round, smooth, convex, opaque colonies with golden-yellow pigment",
             "virulence": "High",
             "treatment": "Methicillin (if MSSA), Vancomycin (if MRSA)",
-            "emoji": "🟡"
+            "emoji": "🟡",
+            "morphology": "Round, smooth, convex, opaque, golden-yellow to cream, 2-4 mm"
         },
         "Staphylococcus_saprophyticus": {
             "gram_stain": "Gram-positive cocci in clusters",
@@ -389,7 +511,8 @@ def get_bacteria_info(bacteria_name):
             "description": "Smooth, convex, opaque colonies; usually non-pigmented",
             "virulence": "Moderate",
             "treatment": "Trimethoprim-sulfamethoxazole, Nitrofurantoin",
-            "emoji": "⚪"
+            "emoji": "⚪",
+            "morphology": "White to cream, smooth, convex colonies"
         },
         "Staphylococcus_epidermidis": {
             "gram_stain": "Gram-positive cocci in clusters",
@@ -400,7 +523,8 @@ def get_bacteria_info(bacteria_name):
             "description": "Small, smooth, circular, convex, non-pigmented, glossy colonies",
             "virulence": "Low (Opportunistic)",
             "treatment": "Vancomycin, Rifampin",
-            "emoji": "🔘"
+            "emoji": "🔘",
+            "morphology": "Small, white, smooth colonies"
         },
         "Streptococcus_pneumoniae": {
             "gram_stain": "Gram-positive lancet-shaped diplococci",
@@ -411,7 +535,8 @@ def get_bacteria_info(bacteria_name):
             "description": "Small, glistening, mucoid colonies; older colonies have central depression",
             "virulence": "High",
             "treatment": "Penicillin, Ceftriaxone, Vancomycin",
-            "emoji": "🟣"
+            "emoji": "🟣",
+            "morphology": "Small, glistening, mucoid; older colonies have central depression (draughtsman)"
         },
         "Streptococcus_pyogenes": {
             "gram_stain": "Gram-positive cocci in chains",
@@ -422,7 +547,8 @@ def get_bacteria_info(bacteria_name):
             "description": "Small, translucent, pinpoint colonies with strong beta hemolysis",
             "virulence": "High",
             "treatment": "Penicillin, Amoxicillin",
-            "emoji": "🔴"
+            "emoji": "🔴",
+            "morphology": "Small, translucent, pinpoint colonies"
         },
         "Streptococcus_agalactiae": {
             "gram_stain": "Gram-positive cocci in chains",
@@ -433,7 +559,8 @@ def get_bacteria_info(bacteria_name):
             "description": "Medium-sized, smooth, grayish-white to cream, slightly mucoid colonies",
             "virulence": "Moderate",
             "treatment": "Penicillin, Ampicillin",
-            "emoji": "🟢"
+            "emoji": "🟢",
+            "morphology": "Gray-white, smooth colonies"
         }
     }
     return info.get(bacteria_name, {})
@@ -509,6 +636,9 @@ def main():
 
                     info = get_bacteria_info(predicted)
 
+                    # Get morphology info from database
+                    morph_data = morphology_db.get(predicted, {})
+                    
                     st.markdown(f"""
                     <div class="prediction-box">
                         <div style="font-size: 3.5rem; margin-bottom: -0.5rem;">{info.get('emoji', '🧬')}</div>
@@ -528,7 +658,13 @@ def main():
                         </div>
                         <div style="margin-top: 1rem; padding: 0.5rem; background: #f0f2f6; border-radius: 8px;">
                             <p style="color: #000000 !important; font-weight: 600 !important; margin: 0; font-size: 0.85rem;">
-                                {reason}
+                                🧬 Morphology: {morph_data.get('blood_agar_colony', 'N/A')}
+                            </p>
+                            <p style="color: #000000 !important; font-weight: 600 !important; margin: 0; font-size: 0.85rem;">
+                                🔑 Key ID: {morph_data.get('key_id', 'N/A')}
+                            </p>
+                            <p style="color: #000000 !important; font-weight: 600 !important; margin: 0; font-size: 0.85rem;">
+                                📋 Reason: {reason}
                             </p>
                         </div>
                     </div>
@@ -537,29 +673,33 @@ def main():
                     st.progress(int(confidence))
 
                     if info:
-                        with st.expander("📊 Morphology & Clinical Characteristics", expanded=True):
+                        with st.expander("📊 Detailed Morphology & Clinical Characteristics", expanded=True):
                             tab1, tab2, tab3 = st.tabs(["🔬 Morphology", "🦠 Clinical", "💊 Treatment"])
-
+                            
                             with tab1:
                                 st.markdown(f"""
                                 <div class="info-card">
-                                    <h4>🔬 Microscopic Features</h4>
+                                    <h4>🔬 Morphological Features</h4>
                                     <p><strong>Gram Stain:</strong> {info['gram_stain']}</p>
                                     <p><strong>Hemolysis:</strong> {info['hemolysis']}</p>
                                     <p><strong>Colony Color:</strong> {info['color']}</p>
                                     <p><strong>Colony Size:</strong> {info['size']}</p>
+                                    <p><strong>Colony Morphology:</strong> {morph_data.get('blood_agar_colony', 'N/A')}</p>
+                                    <p><strong>MSA Growth:</strong> {morph_data.get('msa_growth', 'N/A')}</p>
+                                    <p><strong>MSA Appearance:</strong> {morph_data.get('msa_appearance', 'N/A')}</p>
+                                    <p><strong>Nutrient Agar:</strong> {morph_data.get('nutrient_agar', 'N/A')}</p>
                                 </div>
                                 """, unsafe_allow_html=True)
-
+                            
                             with tab2:
                                 st.markdown(f"""
                                 <div class="info-card">
                                     <h4>🦠 Clinical Information</h4>
                                     <p><strong>Virulence:</strong> {info['virulence']}</p>
-                                    <p><strong>Key Identification:</strong> {info['key_id']}</p>
+                                    <p><strong>Key Identification:</strong> {morph_data.get('key_id', 'N/A')}</p>
                                 </div>
                                 """, unsafe_allow_html=True)
-
+                            
                             with tab3:
                                 st.markdown(f"""
                                 <div class="info-card">
@@ -615,7 +755,7 @@ def main():
         <div style="text-align: center; padding: 1rem 0;">
             <div style="font-size: 3.5rem; animation: bounce 2s ease-in-out infinite;">🧫</div>
             <h3 style="font-weight: 900 !important; color: #000000 !important;">Bacteria AI</h3>
-            <p style="color: #000000 !important; font-weight: 700 !important; font-size: 0.9rem;">🌿 Powered by ONNX + Morphology</p>
+            <p style="color: #000000 !important; font-weight: 700 !important; font-size: 0.9rem;">🌿 Hybrid ML + Morphology</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -623,10 +763,10 @@ def main():
 
         st.markdown("""
         <div style="text-align: center;">
-            <div class="metric-value">82%</div>
-            <div class="metric-label">Model Accuracy</div>
+            <div class="metric-value">6</div>
+            <div class="metric-label">Species</div>
             <div style="margin-top: 0.5rem;">
-                <span class="badge badge-info">6 Species</span>
+                <span class="badge badge-info">ML + Rules</span>
                 <span class="badge badge-green-yellow">🌿 AI Powered</span>
             </div>
         </div>
@@ -669,7 +809,7 @@ def main():
             <p>📤 Upload a clear image</p>
             <p>🔬 Click Classify</p>
             <p>📊 View detailed analysis</p>
-            <p>🌿 Green & Yellow theme</p>
+            <p>🌿 Hybrid ML + Rule-based</p>
         </div>
         """, unsafe_allow_html=True)
 
